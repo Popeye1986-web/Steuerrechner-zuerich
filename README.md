@@ -58,6 +58,9 @@ Settings → Environment Variables, zusätzlich zu den bestehenden:
 
 Alle Schlüssel sind geheim. Sie gehören nur in Vercel, nie in GitHub oder `config.js`.
 
+### Website vorläufig mit Passwort schützen
+Vercel → Settings → Environment Variables: `SITE_PASSWORD` mit einem Passwort deiner Wahl anlegen, dann Redeploy. Ohne Passwort sieht niemand die Seite. Zum Start `SITE_PASSWORD` löschen und erneut Redeploy.
+
 ### 5. Testen
 Mit dem Testschlüssel `sk_test_…` und der Testkarte `4242 4242 4242 4242`, beliebiges künftiges Ablaufdatum, beliebige CVC.
 
