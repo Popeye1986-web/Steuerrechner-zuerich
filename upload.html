@@ -58,6 +58,12 @@ body.pending main{visibility:hidden}
 .casebar select{width:auto}
 body.locked .drop,body.locked .typical{display:none}
 .empty-docs{padding:28px 20px;text-align:center;color:var(--muted)}
+.trust{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px 22px;font-size:15px;color:var(--info)}
+.trust li{display:flex;gap:8px;align-items:center}
+.trust svg{flex:none;color:var(--ok)}
+.yearpick{display:flex;align-items:center;gap:10px;font-size:15px;color:var(--muted)}
+.yearpick select{width:auto;min-height:38px;padding:6px 10px}
+body.fresh .layout{display:none}
 details.adjust summary{cursor:pointer;font-weight:600;font-size:15px;min-height:36px;display:flex;align-items:center}
 details.adjust .box{display:flex;flex-direction:column;gap:12px;padding-top:8px}
 </style>
@@ -82,6 +88,12 @@ details.adjust .box{display:flex;flex-direction:column;gap:12px;padding-top:8px}
     <span class="label" id="introLabel">Steuererklärung Kanton Zürich</span>
     <h1 id="introTitle">Laden Sie einfach alle Belege hoch</h1>
     <p class="muted">taxflix erkennt selbst, um welchen Beleg es sich handelt, wem er gehört und welche Beträge darauf stehen. Daraus ergeben sich Ihr Haushalt und Ihre Steuererklärung.</p>
+    <ul class="trust" id="trust" hidden>
+      <li><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>Kein Konto nötig</li>
+      <li><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>Bezahlen erst am Schluss</li>
+      <li><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>Ausgefülltes Formular per E-Mail</li>
+    </ul>
+    <div class="yearpick" id="yearPick" hidden><label for="yearSel">Steuerjahr</label><select id="yearSel"><option value="2025">2025</option><option value="2026">2026</option></select></div>
   </div>
 
   <label class="drop" id="drop" for="file">
@@ -157,8 +169,25 @@ const drop=$("drop"), fileIn=$("file");
 drop.addEventListener("drop",e=>addFiles([...e.dataTransfer.files]));
 fileIn.addEventListener("change",()=>{ addFiles([...fileIn.files]); fileIn.value=""; });
 
+// Erster Beleg eines neuen Besuchers: unsichtbar anmelden und Steuerfall anlegen
+let CREATING=null;
+async function ensureCase(){
+  if(TX.CASE.id) return true;
+  if(!CREATING) CREATING=(async()=>{
+    USER=await SP.ensureGuest();
+    const row=await SP.createFall({ name:"", email:null, jahr:S.year });
+    TX.CASE.id=row.id; TX.CASE.row=row;
+    history.replaceState(null,"","upload.html?fall="+row.id);
+    document.body.classList.remove("fresh"); $("yearPick").hidden=true;
+  })();
+  try{ await CREATING; return true; }
+  catch(e){ CREATING=null; console.error(e); toast("Hochladen ist gerade nicht möglich. Bitte später erneut versuchen."); return false; }
+}
 async function addFiles(files){
   if(LOCKED){ toast("Dieser Fall ist in Prüfung und kann nicht mehr geändert werden"); return; }
+  files=files.filter(f=>{ const ok=/^(application\/pdf|image\/(jpeg|png|webp))$/.test(f.type); if(!ok) toast(f.name+": nur PDF, JPG, PNG oder WebP"); return ok; });
+  if(!files.length) return;
+  if(!(await ensureCase())) return;
   for(const f of files){
     if(!/^(application\/pdf|image\/(jpeg|png|webp))$/.test(f.type)){ toast(f.name+": nur PDF, JPG, PNG oder WebP"); continue; }
     if(f.size>20*1024*1024){ toast(f.name+": grösser als 20 MB"); continue; }
@@ -399,7 +428,8 @@ function renderMissing(){
 
 /* ---------- Fall ---------- */
 function renderCase(){
-  const row=TX.CASE.row; if(!row) return;
+  const row=TX.CASE.row;
+  if(!row){ $("submitPanel").hidden=true; return; }
   const st=row.status;
   LOCKED = !PRUEFER && (row.bezahlt || st!=="offen");
   document.body.classList.toggle("locked", LOCKED);
@@ -411,7 +441,7 @@ function renderCase(){
     sel.value=st;
     sel.addEventListener("change",async()=>{ try{ await TX.setCaseStatus(sel.value); toast("Status: "+TX.STATUS[sel.value].t); render(); }catch(_){ toast("Status konnte nicht gespeichert werden"); sel.value=TX.CASE.row.status; } });
     bar.append(el("a",{class:"btn ghost small",href:"faelle.html",text:"← Alle Fälle"}),
-      el("div",{class:"who"}, el("b",{text:row.kunde_name}), el("span",{class:"muted",text:`${row.kunde_email} · Steuerjahr ${row.jahr}`})),
+      el("div",{class:"who"}, el("b",{text:row.kunde_name||"Neuer Kunde"}), el("span",{class:"muted",text:`${row.kunde_email||"E-Mail folgt bei der Bezahlung"} · Steuerjahr ${row.jahr}`})),
       el("label",{for:"statusSel",class:"label",text:"Status"}), sel);
     $("toResult").hidden=false; $("toResult").href="ergebnis.html?fall="+row.id;
     $("submitPanel").hidden=true;
@@ -419,7 +449,7 @@ function renderCase(){
     const p=$("submitPanel"); p.hidden=false; p.replaceChildren();
     if(row.bezahlt || st!=="offen"){
       p.append(el("span",{class:"pill ok",text:row.bezahlt?"Bezahlt":TX.STATUS[st].t}), el("h2",{text:"Fertig"}),
-        el("p",{class:"muted",text:"Wir prüfen Ihre Belege und melden uns per E-Mail, sobald Ihre Steuererklärung bereit ist."}));
+        el("p",{class:"muted",text: row.kunde_email ? `Ihre ausgefüllte Steuererklärung haben wir an ${row.kunde_email} geschickt. Wir prüfen jetzt Ihre Belege und melden uns, falls etwas fehlt.` : "Wir prüfen Ihre Belege und melden uns per E-Mail."}));
     } else if(!S.docs.length){
       p.append(el("h2",{text:"So geht es weiter"}), el("p",{class:"muted",text:"Laden Sie oben alle Belege hoch. Danach stellen wir Ihnen nur noch Fragen, die auf keinem Beleg stehen, und Sie können bezahlen."}));
     } else if(reading()){
@@ -431,7 +461,7 @@ function renderCase(){
       } else {
         p.append(el("span",{class:"pill ok",text:"Alles erfasst"}), el("h2",{text:"Bereit zur Bezahlung"}),
           el("p",{class:"muted",text: miss ? "Falls Sie noch weitere Belege haben, laden Sie diese jetzt hoch. Sonst können Sie direkt bezahlen." : "Wir haben alles, was wir brauchen."}),
-          el("a",{class:"btn primary",href:"bezahlen.html?fall="+row.id,text:"Weiter zur Bezahlung",style:"min-height:52px"}));
+          el("a",{class:"btn primary",href:"bezahlen.html?fall="+row.id,text:"Weiter zur Bezahlung",style:"min-height:52px",onclick:async e=>{ e.preventDefault(); const h=e.currentTarget.href; try{ await TX.flushCase(); }catch(_){} location.href=h; }}));
       }
     }
   }
@@ -447,21 +477,48 @@ function render(){
   if(act){ const e=document.getElementById(act); if(e){ const d=e.closest("details"); if(d) d.open=true; e.focus({preventScroll:true}); } }
 }
 
-(async function boot(){
-  if(!SP.configured || !SP.client){ $("localNote").textContent="Login ist nicht eingerichtet. Bitte config.js prüfen."; $("localNote").hidden=false; document.body.classList.remove("pending"); return; }
-  const res=await TX.loadCase();
-  USER=res.user; PRUEFER=res.pruefer;
-  if(res.error){ location.replace(PRUEFER?"faelle.html":"kunde.html"); return; }
-  S=res.state;
-  $("who").textContent=USER.email||""; $("logout").hidden=false; $("logout").addEventListener("click",()=>SP.logout());
-  SP.client.auth.onAuthStateChange(ev=>{ if(ev==="SIGNED_OUT") location.replace("login.html"); }); onSave("saved");
-  const id=TX.CASE.id;
-  $("home").href = PRUEFER ? "faelle.html" : "kunde.html";
-  const links = PRUEFER ? [["faelle.html","Steuerfälle",""],["upload.html?fall="+id,"Belege","1"],["ergebnis.html?fall="+id,"Ergebnis","2"]] : [["kunde.html","Meine Steuererklärung",""]];
+function setupHeader(){
+  const id=TX.CASE.id, guest=SP.isGuest(USER);
+  if(USER && !guest){ $("who").textContent=USER.email||""; $("logout").hidden=false; }
+  $("home").href = PRUEFER ? "faelle.html" : guest||!USER ? "upload.html" : "kunde.html";
+  const links = PRUEFER ? [["faelle.html","Steuerfälle",""],["upload.html?fall="+id,"Belege","1"],["ergebnis.html?fall="+id,"Ergebnis","2"]]
+    : guest||!USER ? [] : [["kunde.html","Meine Steuererklärung",""]];
   $("nav").replaceChildren(...links.map(([h,t,n],i)=>el("li",{}, el("a",{href:h,"aria-current":PRUEFER&&i===1?"page":null}, n?el("span",{class:"n",text:n}):null, t))));
-  if(PRUEFER){ $("introLabel").textContent="Prüferansicht"; $("introTitle").textContent="Belege von "+TX.CASE.row.kunde_name; }
-  else { $("introLabel").textContent="Steuererklärung "+TX.CASE.row.jahr; }
-  TX.rebuild(S);
+}
+$("logout").addEventListener("click",()=>SP.logout());
+addEventListener("pagehide",()=>{ TX.flushCase().catch(()=>{}); });
+
+(async function boot(){
+  if(!SP.configured || !SP.client){ $("localNote").textContent="Die Verbindung zur Datenbank ist nicht eingerichtet. Bitte config.js prüfen."; $("localNote").hidden=false; document.body.classList.remove("pending"); return; }
+  const fid=new URLSearchParams(location.search).get("fall");
+  USER=await SP.getUser();
+  if(!fid){
+    // Startseite: ohne Login. Ein offener Fall dieses Besuchers wird fortgesetzt.
+    if(USER && await SP.isPruefer()){ location.replace("faelle.html"); return; }
+    if(USER){
+      let rows=[]; try{ rows=await SP.listFaelle(); }catch(_){}
+      const open=rows.find(r=>!r.bezahlt && r.status==="offen");
+      if(open){ location.replace("upload.html?fall="+open.id); return; }
+    }
+    S=TX.emptyState(2025);
+    document.body.classList.add("fresh");
+    $("trust").hidden=false; $("yearPick").hidden=false;
+    $("yearSel").addEventListener("change",()=>{ S.year=+$("yearSel").value; S.overrides.year=S.year; });
+    $("introLabel").textContent="Steuererklärung Kanton Zürich";
+    setupHeader(); TX.rebuild(S);
+  } else {
+    if(!USER){ location.replace("upload.html"); return; }
+    const res=await TX.loadCase();
+    USER=res.user; PRUEFER=res.pruefer;
+    if(res.error){ location.replace(PRUEFER?"faelle.html":"upload.html"); return; }
+    S=res.state;
+    if(!SP.isGuest(USER)) SP.client.auth.onAuthStateChange(ev=>{ if(ev==="SIGNED_OUT") location.replace("login.html"); });
+    onSave("saved");
+    setupHeader();
+    if(PRUEFER){ $("introLabel").textContent="Prüferansicht"; $("introTitle").textContent="Belege von "+(TX.CASE.row.kunde_name||"neuem Kunden"); }
+    else { $("introLabel").textContent="Steuererklärung "+TX.CASE.row.jahr; }
+    TX.rebuild(S);
+  }
   document.body.classList.remove("pending");
   render();
   try{ const r=await fetch("/api/auslesen"); const j=r.ok?await r.json():null; setAuto(j&&j.configured?"on":"off"); }catch(_){ setAuto("off"); }

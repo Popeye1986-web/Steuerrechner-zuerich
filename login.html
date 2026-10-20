@@ -165,6 +165,7 @@ form{display:flex;flex-direction:column;gap:16px}
           <button type="submit" class="primary" id="authSubmit">Anmelden</button>
           <p class="fine" id="terms" hidden>Mit dem Erstellen eines Kontos akzeptieren Sie die <a href="#">AGB</a> und die <a href="#">Datenschutzerklärung</a>.</p>
         </form>
+        <p class="fine" style="text-align:center">Neu hier? Für Ihre Steuererklärung brauchen Sie kein Konto. <a href="upload.html">Jetzt Belege hochladen</a></p>
       </section>
 
       <!-- Passwort vergessen -->
@@ -309,7 +310,7 @@ $("form-reset").addEventListener("submit", async e=>{
   sb.auth.onAuthStateChange((event)=>{ if(event==="PASSWORD_RECOVERY") show("reset"); });
   if(isRecovery){ show("reset"); return; }
   const user = await SP.getUser();
-  if(user){ location.replace(await SP.afterLogin()); return; }
+  if(user && !SP.isGuest(user)){ location.replace(await SP.afterLogin()); return; }
   // Einladungslink: E-Mail vorausfüllen und Registrierung zeigen
   const inv = new URLSearchParams(location.search).get("email");
   if(inv && validEmail(inv)){ setMode("register"); $("email").value = inv; $("password").focus(); }

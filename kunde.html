@@ -122,7 +122,7 @@ function showDone(r){
 
 $("logout").addEventListener("click",()=>SP.logout());
 (async function boot(){
-  USER=await SP.requireUser(); $("who").textContent=USER.email||"";
+  USER=await SP.requireUser(); if(SP.isGuest(USER)){ location.replace("upload.html"); return; } $("who").textContent=USER.email||"";
   if(await SP.isPruefer()){ location.replace("faelle.html"); return; }
   const p=new URLSearchParams(location.search), sid=p.get("bezahlt"), fid=p.get("fall");
   try{ ROWS=await SP.listFaelle(); }catch(_){ ROWS=[]; }

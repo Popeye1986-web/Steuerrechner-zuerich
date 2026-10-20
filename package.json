@@ -1,0 +1,8 @@
+{
+  "name": "taxflix",
+  "private": true,
+  "description": "taxflix: Steuererklärung Kanton Zürich",
+  "dependencies": {
+    "pdf-lib": "1.17.1"
+  }
+}

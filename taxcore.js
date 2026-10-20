@@ -191,11 +191,19 @@ window.TX = (function () {
     const status = onStatus || function () {};
     if (!CASE.id) return;
     status("saving");
-    clearTimeout(CASE.timer);
+    clearTimeout(CASE.timer); PENDING.S = S;
     CASE.timer = setTimeout(async () => {
+      CASE.timer = null;
       try { const r = await SP.saveFall(CASE.id, { data: S }); if (r) CASE.row.status = r.status; status("saved"); }
       catch (e) { status("error"); }
     }, 700);
+  }
+  // Speichert sofort, falls noch eine Änderung wartet (z.B. vor dem Wechsel zur Bezahlseite)
+  const PENDING = { S: null };
+  async function flushCase() {
+    if (!CASE.id || !PENDING.S || !CASE.timer) return;
+    clearTimeout(CASE.timer); CASE.timer = null;
+    const r = await SP.saveFall(CASE.id, { data: PENDING.S }); if (r) CASE.row.status = r.status;
   }
   async function setCaseStatus(status) {
     const r = await SP.saveFall(CASE.id, { status });
@@ -538,6 +546,116 @@ window.TX = (function () {
     return S;
   }
 
-  return { bundTarif, CASE, STATUS, stateFromRow, loadCase, saveCase, setCaseStatus, typeName, rebuild, ZH, BUND, S3A_PK, GEMEINDEN, KEYS, DOCTYPES, emptyState, normalize, loadState, saveState, CLOUD,
+  /* ---------- Formular wie auf Papier ---------- */
+  // Feldcodes gemäss Formular «Steuererklärung 2025» des Kantonalen Steueramts Zürich (eine Nummer pro Zeile, für Staat und Bund gemeinsam).
+  // Bei Feldern pro Person: [Person 1, Person 2]. Ziffer 16.4 ist in der Vorlage nicht eindeutig lesbar und deshalb leer.
+  const FORM_CODES={"1.1":[100,101],"1.2":[102,103],"2.1":[120,121],"2.2":[122,123],"3.1":[130,131],"3.2":[134,136],"3.3":[140,141],"3.4":[142,143],
+    "4.1":150,"4.2":151,"5.1":160,"5.2":161,"5.3":162,"5.4":163,"5.5":164,"6":188,"7":199,"11.1":220,"11.2":240,"12":250,"13.1":254,"13.2":255,"13.3":256,
+    "14.1":262,"14.2":263,"15":270,"16.1":280,"16.2":292,"16.3":283,"16.5":284,"16.6":376,"17":290,"18":299,"19":199,"20":299,"21":310,"22.1":320,"22.2":324,
+    "23":350,"24.1":370,"24.2":374,"24.3":365,"25":390,"26.1":394,"26.2":396,"27":398,"30.1":400,"30.2":404,"30.3":406,"30.4":412,"30.5":414,"30.6":416,
+    "31.1":421,"31.2":422,"32":430,"33":460,"34":470,"35":490,"36.1":494,"36.2":496,"37":498};
+  function formRows(S, R){
+    const rows=R.rows, np=R.np;
+    const g=(z,p)=>rows.filter(r=>r.z===z && (p===undefined || r.p===p)).reduce((a,r)=>({s:a.s+(+r.s||0), b:a.b+(r.b==null?0:+r.b||0)}),{s:0,b:0});
+    const nm=p=>np===2?" · "+personName(S,p):"";
+    const out=[];
+    const page=t=>out.push({kind:"page",l:t});
+    const head=(z,l)=>out.push({kind:"head",z,l});
+    const v=(z,l,val,o)=>out.push(Object.assign({kind:"wert",z,l,s:val.s,b:val.b},o||{}));
+    const one=x=>({s:x,b:x});
+    const sum=(z,l,s,b,o)=>out.push(Object.assign({kind:"summe",z,l,s,b},o||{}));
+    const total=(z,l,s,b,o)=>out.push(Object.assign({kind:"total",z,l,s,b},o||{}));
+    const persons=[...Array(np).keys()];
+
+    page("Seite 2 · Einkünfte im In- und Ausland");
+    head("1","Einkünfte aus unselbständiger Erwerbstätigkeit");
+    persons.forEach(p=>v("1.1","Haupterwerb"+nm(p),g("1.1",p),{sub:1,p}));
+    persons.forEach(p=>v("1.2","Nebenerwerb"+nm(p),g("1.2",p),{sub:1,p}));
+    head("2","Einkünfte aus selbständiger Erwerbstätigkeit");
+    persons.forEach(p=>v("2.1","Haupterwerb"+nm(p),g("2.1",p),{sub:1,p}));
+    persons.forEach(p=>v("2.2","Nebenerwerb"+nm(p),one(0),{sub:1,p}));
+    head("3","Einkünfte aus Sozial- und anderen Versicherungen, Leibrenten");
+    const pv=(key,p)=>one(valueOf(S,key,p));
+    persons.forEach(p=>v("3.1","AHV-/IV-Renten (100 %)"+nm(p),pv("ahv_rente",p),{sub:1,p}));
+    persons.forEach(p=>v("3.2","Renten/Pensionen"+nm(p),pv("pk_rente",p),{sub:1,p,note:"weitere Rente: Code "+(p?"137":"135")}));
+    persons.forEach(p=>v("3.3","Erwerbsausfallentschädigungen aus Arbeitslosenversicherung"+nm(p),pv("alv",p),{sub:1,p}));
+    persons.forEach(p=>v("3.4","Kinder- und Familienzulagen, Mutterschaftsentschädigungen, Taggelder"+nm(p),pv("taggelder",p),{sub:1,p}));
+    head("4","Wertschriftenertrag");
+    v("4.1","Ertrag aus Wertschriften, Guthaben und Lotterien",g("4.1"),{sub:1,note:"gemäss Wertschriftenverzeichnis"});
+    v("4.2","Davon aus qualifizierten Beteiligungen",one(0),{sub:1});
+    head("5","Übrige Einkünfte und Gewinne");
+    v("5.1","Unterhaltsbeiträge vom geschiedenen/getrennten Ehegatten/Partner",g("5.1"),{sub:1});
+    v("5.2","Unterhaltsbeiträge für minderjährige Kinder",one(0),{sub:1});
+    v("5.3","Ertrag aus Geschäfts- und Korporationsanteilen",one(0),{sub:1});
+    v("5.4","Weitere Einkünfte",g("5.4"),{sub:1});
+    v("5.5","Kapitalabfindungen für wiederkehrende Leistungen",one(0),{sub:1});
+    v("6","Nettoertrag aus Liegenschaften",g("6"),{note: R.raw.liegBrutto ? `Bruttoertrag ${nf.format(R.raw.liegBrutto)} abzüglich Unterhalt ${nf.format(R.raw.liegUnt)}` : ""});
+    sum("7","Total der Einkünfte",R.ein,R.ein,{note:"Übertrag auf Seite 3, Ziffer 19"});
+
+    page("Seite 3 · Abzüge");
+    head("11","Berufsauslagen bei unselbständiger Erwerbstätigkeit");
+    persons.forEach(p=>v("11."+(p+1),"Person "+(p+1)+nm(p),g("11."+(p+1)),{sub:1,note:"siehe Hilfsblatt Berufsauslagen"}));
+    v("12","Schuldzinsen",g("12"));
+    head("13","Unterhaltsbeiträge und Rentenleistungen");
+    v("13.1","Unterhaltsbeiträge an den geschiedenen oder getrennt lebenden Ehegatten/Partner",g("13.1"),{sub:1});
+    v("13.2","Unterhaltsbeiträge für minderjährige Kinder",one(0),{sub:1});
+    v("13.3","Rentenleistungen, abzugsfähiger Ertragsanteil",one(0),{sub:1});
+    head("14","Beiträge an anerkannte Formen der gebundenen Selbstvorsorge (3. Säule a)");
+    persons.forEach(p=>v("14."+(p+1),"Person "+(p+1)+nm(p),g("14."+(p+1)),{sub:1,note:"Bescheinigung: Code "+(p?"261":"260")}));
+    v("15","Versicherungsprämien und Zinsen von Sparkapitalien",g("15"),{note:"siehe Hilfsblatt Versicherungsprämien"});
+    head("16","Weitere Abzüge");
+    v("16.1","Beiträge an die AHV, IV und 2. Säule (Einkauf)",g("16.1"),{sub:1});
+    v("16.2","Berufsorientierte Aus- und Weiterbildungskosten",g("16.2"),{sub:1});
+    v("16.3","Kosten für die Verwaltung des beweglichen Privatvermögens",one(0),{sub:1});
+    v("16.4","Behinderungsbedingte Kosten",one(0),{sub:1,note:"Code bitte im Formular prüfen"});
+    v("16.5","Weitere Abzüge (z.B. Beiträge an politische Parteien)",one(0),{sub:1});
+    v("16.6","Abzug für fremdbetreute Kinder",g("16.6"),{sub:1,note: R.kidsU14 ? `Höchstens ${nf.format(R.Z.betreuung)} (Staat) bzw. ${nf.format(BUND.betreuung)} (Bund) je Kind` : ""});
+    v("17","Sonderabzug bei Erwerbstätigkeit beider Ehegatten/Partner",g("17"));
+    const t18=g("18");
+    sum("18","Total der Abzüge",t18.s,t18.b,{note:"Übertrag in Ziffer 20"});
+
+    page("Seite 3 · Einkommensberechnung");
+    v("19","Total der Einkünfte",one(R.ein),{note:"Übertrag von Ziffer 7"});
+    v("20","Total der Abzüge",t18,{note:"Übertrag von Ziffer 18"});
+    const n21=g("21"); sum("21","Nettoeinkommen",n21.s,n21.b);
+    head("22","Zusätzliche Abzüge");
+    v("22.1","Krankheits- und Unfallkosten",g("22.1"),{sub:1,note:"Anteil über 5 % des Nettoeinkommens"});
+    v("22.2","Gemeinnützige Zuwendungen",g("22.2"),{sub:1,note:"ab CHF 100, höchstens 20 % des Nettoeinkommens"});
+    const r23=g("23"); sum("23","Reineinkommen",r23.s,r23.b);
+    head("24","Steuerfreie Beträge (Sozialabzüge)");
+    v("24.1","Abzug für Kinder in Ihrem Haushalt"+(R.kids?` (${R.kids})`:""),g("24.1"),{sub:1,note:"Kinder ausserhalb des Haushalts: Code 372"});
+    v("24.2","Abzug für unterstützte Personen",one(0),{sub:1});
+    const e243=g("24.3"); v("24.3","Abzug für Ehegatten/Partner",{s:0,b:e243.b},{sub:1});
+    sum("25","Steuerbares Einkommen gesamt",Math.max(0,R.raw.e25s),Math.max(0,R.raw.e25b));
+    head("26","Vom steuerbaren Einkommen entfallen auf");
+    v("26.1","Steuerbare Einkünfte in anderen Kantonen",one(0),{sub:1});
+    v("26.2","Steuerbare Einkünfte im Ausland",one(0),{sub:1});
+    total("27","Steuerbares Einkommen im Kanton Zürich bzw. in der Schweiz",Math.max(0,R.raw.e25s),Math.max(0,R.raw.e25b));
+
+    page("Seite 4 · Vermögen im In- und Ausland (nur Staats- und Gemeindesteuer)");
+    head("30","Bewegliches Vermögen");
+    const so={sub:1,staat:1};
+    v("30.1","Wertschriften und Guthaben",g("30.1"),Object.assign({note:"gemäss Wertschriftenverzeichnis"},so));
+    v("30.2","Bargeld, Gold und andere Edelmetalle",g("30.2"),so);
+    v("30.3","Lebens- und Rentenversicherungen (Steuerwert)",g("30.3"),so);
+    v("30.4","Motorfahrzeuge",g("30.4"),so);
+    v("30.5","Geschäfts-/Korporationsanteile",one(0),so);
+    v("30.6","Übrige Vermögenswerte",g("30.6"),so);
+    head("31","Liegenschaften");
+    v("31.1","Zum Verkehrswert besteuert",g("31.1"),so);
+    v("31.2","Zum Ertragswert besteuert (Land- und Forstwirtschaft)",one(0),so);
+    v("32","Eigenkapital Selbständigerwerbender",one(0),{staat:1});
+    sum("33","Total der Vermögenswerte",R.raw.v33,null,{staat:1});
+    v("34","Schulden",one(R.raw.v34),{staat:1});
+    sum("35","Steuerbares Vermögen gesamt",Math.max(0,R.raw.v35),null,{staat:1});
+    head("36","Vom steuerbaren Vermögen entfallen auf");
+    v("36.1","Steuerbare Vermögenswerte in anderen Kantonen",one(0),so);
+    v("36.2","Steuerbare Vermögenswerte im Ausland",one(0),so);
+    total("37","Steuerbares Vermögen im Kanton Zürich",Math.max(0,R.raw.v35),null,{staat:1});
+    for(const r of out){ const c=FORM_CODES[r.z]; if(c!=null) r.code = Array.isArray(c) ? c[r.p||0] : c; }
+    return out;
+  }
+
+  return { bundTarif, formRows, CASE, STATUS, stateFromRow, loadCase, saveCase, flushCase, setCaseStatus, typeName, rebuild, ZH, BUND, S3A_PK, GEMEINDEN, KEYS, DOCTYPES, emptyState, normalize, loadState, saveState, CLOUD,
     nf, nf2, chf, clamp, married, nPersons, personName, valueOf, setValue, checklist, calc, taxes, uid };
 })();

@@ -28,6 +28,16 @@ window.SP = (function () {
     return user;
   }
 
+  // Besucher ohne Konto: unsichtbare, anonyme Anmeldung, damit die Belege geschützt gespeichert werden.
+  const isGuest = u => !!(u && (u.is_anonymous || !u.email));
+  async function ensureGuest() {
+    const u = await getUser();
+    if (u) return u;
+    const { data, error } = await client.auth.signInAnonymously();
+    if (error) throw error;
+    return data.user;
+  }
+
   let _pruefer = null;
   async function isPruefer() {
     if (!client) return false;
@@ -36,7 +46,10 @@ window.SP = (function () {
     _pruefer = !error && data === true;
     return _pruefer;
   }
-  async function homePage() { return (await isPruefer()) ? "faelle.html" : "kunde.html"; }
+  async function homePage() {
+    if (await isPruefer()) return "faelle.html";
+    return isGuest(await getUser()) ? "upload.html" : "kunde.html";
+  }
   async function afterLogin() {
     const n = new URLSearchParams(location.search).get("next");
     if (n && NEXT_OK.test(n)) return n;
@@ -50,12 +63,12 @@ window.SP = (function () {
 
   /* ---------- Steuerfälle ---------- */
   async function listFaelle() {
-    const { data, error } = await client.from(FAELLE).select("id,kunde_name,kunde_email,jahr,status,bezahlt,betrag_chf,zahlung_session,data,created_at,updated_at").order("updated_at", { ascending: false });
+    const { data, error } = await client.from(FAELLE).select("id,kunde_name,kunde_email,jahr,status,bezahlt,betrag_chf,zahlung_session,mail_gesendet_am,data,created_at,updated_at").order("updated_at", { ascending: false });
     if (error) throw error;
     return data || [];
   }
   async function createFall(v) {
-    const { data, error } = await client.from(FAELLE).insert({ kunde_name: v.name, kunde_email: v.email.trim().toLowerCase(), jahr: v.jahr }).select().single();
+    const { data, error } = await client.from(FAELLE).insert({ kunde_name: v.name || "", kunde_email: v.email ? v.email.trim().toLowerCase() : null, jahr: v.jahr }).select().single();
     if (error) throw error;
     return data;
   }
@@ -87,6 +100,6 @@ window.SP = (function () {
     try { const r = await fetch("/api/zahlung"); return r.ok ? await r.json() : { configured: false }; } catch (_) { return { configured: false }; }
   }
 
-  return { zahlung, zahlungInfo, configured, client, getUser, requireUser, isPruefer, homePage, afterLogin, logout,
+  return { zahlung, zahlungInfo, configured, client, getUser, requireUser, isGuest, ensureGuest, isPruefer, homePage, afterLogin, logout,
     listFaelle, createFall, loadFall, saveFall, deleteFall };
 })();

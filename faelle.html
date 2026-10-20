@@ -47,8 +47,6 @@ td.acts .btn{margin-left:4px}
 .newcase{padding:20px;display:flex;flex-direction:column;gap:14px;margin-bottom:20px}
 .newcase .row{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1.4fr) 140px auto;gap:12px;align-items:end}
 @media (max-width:760px){.newcase .row{grid-template-columns:minmax(0,1fr)}}
-.invite{padding:16px;border:1px solid #bfe0cc;background:var(--ok-soft);border-radius:var(--r);display:flex;flex-direction:column;gap:10px}
-.invite pre{margin:0;white-space:pre-wrap;font-family:var(--f-body);font-size:15px;color:var(--ink);background:var(--bg);border-radius:4px;padding:12px}
 .msg{font-size:14.5px}
 .msg.bad{color:var(--bad)}
 </style>
@@ -78,21 +76,13 @@ td.acts .btn{margin-left:4px}
     <form id="newForm" novalidate>
       <div class="row">
         <div class="field"><label for="nName">Name des Kunden</label><input id="nName" type="text" autocomplete="off" placeholder="z.B. Anna und Marco Meier"></div>
-        <div class="field"><label for="nEmail">E-Mail des Kunden</label><input id="nEmail" type="email" autocomplete="off" placeholder="anna.meier@example.ch"></div>
+        <div class="field"><label for="nEmail">E-Mail des Kunden (optional)</label><input id="nEmail" type="email" autocomplete="off" placeholder="anna.meier@example.ch"></div>
         <div class="field"><label for="nYear">Steuerjahr</label><select id="nYear"><option value="2025">2025</option><option value="2026">2026</option></select></div>
         <button class="btn primary" type="submit" id="nSubmit">Fall eröffnen</button>
       </div>
-      <p class="note">Der Kunde erstellt mit genau dieser E-Mail ein Konto und sieht dann nur diesen Fall.</p>
+      <p class="note">Kunden brauchen keine Einladung: Sie laden ihre Belege direkt auf der Startseite hoch und erscheinen dann hier. Einen Fall selbst eröffnen Sie nur, wenn Sie die Belege für den Kunden hochladen.</p>
       <p class="msg" id="nMsg" role="status"></p>
     </form>
-    <div class="invite" id="invite" hidden>
-      <b>Fall eröffnet. Schicken Sie dem Kunden diese Einladung:</b>
-      <pre id="inviteText"></pre>
-      <div class="row" style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn" type="button" id="copyInvite">Text kopieren</button>
-        <a class="btn primary" id="openNew" href="#">Fall öffnen</a>
-      </div>
-    </div>
   </section>
 
   <div class="kpis" id="kpis"></div>
@@ -132,10 +122,6 @@ function summarize(row){
   const R=hasVals?TX.calc(S):null;
   return { docs:S.docs.length, missing:(S.derived&&S.derived.missing||[]).length, total:R?R.T.total:null };
 }
-function inviteText(r){
-  const link=location.origin+location.pathname.replace(/[^/]*$/,"")+"login.html?email="+encodeURIComponent(r.kunde_email);
-  return `Guten Tag ${r.kunde_name}\n\nFür Ihre Steuererklärung ${r.jahr} können Sie Ihre Belege ab sofort online bei taxflix hochladen:\n${link}\n\nBitte erstellen Sie dort ein Konto mit dieser E-Mail-Adresse: ${r.kunde_email}\nLaden Sie dann einfach alle Belege hoch, die Sie haben. Wir melden uns, sobald wir alles geprüft haben.\n\nFreundliche Grüsse`;
-}
 async function copy(text){ try{ await navigator.clipboard.writeText(text); toast("Kopiert"); }catch(_){ toast("Kopieren nicht möglich, bitte Text markieren"); } }
 
 function render(){
@@ -147,23 +133,23 @@ function render(){
     el("span",{class:"label",text:TX.STATUS[k].t}), el("span",{class:"v",text:String(counts[k])}), el("span",{class:"s",text:sub[k]}))));
   // Tabelle
   const q=$("q").value.trim().toLowerCase(), y=$("fYear").value;
-  const list=ROWS.filter(r=>(!FILTER||r.status===FILTER) && (!y||String(r.jahr)===y) && (!q||(r.kunde_name+" "+r.kunde_email).toLowerCase().includes(q)));
+  const list=ROWS.filter(r=>(!FILTER||r.status===FILTER) && (!y||String(r.jahr)===y) && (!q||((r.kunde_name||"")+" "+(r.kunde_email||"")).toLowerCase().includes(q)));
   const tb=$("rows"); tb.replaceChildren();
-  if(!ROWS.length){ tb.append(el("tr",{}, el("td",{colspan:"9",class:"muted",style:"padding:32px 14px;text-align:center",text:"Noch keine Steuerfälle. Eröffnen Sie mit «Neuer Fall» den ersten."}))); return; }
+  if(!ROWS.length){ tb.append(el("tr",{}, el("td",{colspan:"9",class:"muted",style:"padding:32px 14px;text-align:center",text:"Noch keine Steuerfälle. Sobald ein Kunde auf der Startseite Belege hochlädt, erscheint er hier."}))); return; }
   if(!list.length){ tb.append(el("tr",{}, el("td",{colspan:"9",class:"muted",style:"padding:24px 14px",text:"Keine Fälle für diesen Filter."}))); return; }
   for(const r of list){
     const st=TX.STATUS[r.status]||TX.STATUS.offen, s=r._sum;
     let armed=false;
-    const del=el("button",{class:"btn ghost small",type:"button",text:"Löschen","aria-label":"Fall löschen: "+r.kunde_name});
+    const del=el("button",{class:"btn ghost small",type:"button",text:"Löschen","aria-label":"Fall löschen: "+(r.kunde_name||"ohne Namen")});
     del.addEventListener("click",async()=>{
       if(!armed){ armed=true; del.textContent="Wirklich löschen?"; setTimeout(()=>{armed=false; del.textContent="Löschen";},4000); return; }
       try{ await SP.deleteFall(r.id); ROWS=ROWS.filter(x=>x.id!==r.id); render(); toast("Fall gelöscht"); }catch(_){ toast("Löschen fehlgeschlagen"); }
     });
     tb.append(el("tr",{},
-      el("td",{class:"first"}, el("b",{text:r.kunde_name}), el("span",{class:"sub",text:r.kunde_email})),
+      el("td",{class:"first"}, el("b",{text:r.kunde_name||"Noch ohne Namen"}), el("span",{class:"sub",text:r.kunde_email||(r.bezahlt?"":"E-Mail folgt bei der Bezahlung")})),
       el("td",{class:"num","data-label":"Jahr",text:String(r.jahr)}),
       el("td",{"data-label":"Status"}, el("span",{class:"pill "+st.c,text:st.t})),
-      el("td",{"data-label":"Bezahlt"}, r.bezahlt ? el("span",{class:"pill ok",text:"✓ "+(r.betrag_chf!=null?TX.chf(r.betrag_chf):"")}) : el("span",{class:"muted",text:"–"})),
+      el("td",{"data-label":"Bezahlt"}, r.bezahlt ? el("span",{class:"paid"}, el("span",{class:"pill ok",text:"✓ "+(r.betrag_chf!=null?TX.chf(r.betrag_chf):"")}), el("span",{class:"sub",text:r.mail_gesendet_am?"PDF gesendet":"PDF nicht gesendet"})) : el("span",{class:"muted",text:"–"})),
       el("td",{class:"r amt","data-label":"Belege",text:String(s.docs)}),
       el("td",{class:"r amt","data-label":"Fehlt",style:s.missing?"color:var(--warn)":"color:var(--muted)",text:String(s.missing)}),
       el("td",{class:"r amt","data-label":"Geschätzte Steuer",text:s.total==null?"–":TX.chf(s.total)}),
@@ -171,26 +157,23 @@ function render(){
       el("td",{class:"acts"},
         el("a",{class:"btn small",href:"upload.html?fall="+r.id,text:"Belege"}),
         el("a",{class:"btn small",href:"ergebnis.html?fall="+r.id,text:"Ergebnis"}),
-        el("button",{class:"btn ghost small",type:"button",text:"Einladung",onclick:()=>copy(inviteText(r))}),
         del)));
   }
 }
 
-$("newBtn").addEventListener("click",()=>{ const n=$("newCase"); n.hidden=!n.hidden; if(!n.hidden){ $("invite").hidden=true; $("nName").focus(); } });
+$("newBtn").addEventListener("click",()=>{ const n=$("newCase"); n.hidden=!n.hidden; if(!n.hidden) $("nName").focus(); });
 $("q").addEventListener("input",render); $("fYear").addEventListener("change",render);
-$("copyInvite").addEventListener("click",()=>copy($("inviteText").textContent));
 $("newForm").addEventListener("submit",async e=>{
   e.preventDefault();
   const name=$("nName").value.trim(), email=$("nEmail").value.trim(), jahr=+$("nYear").value, msg=$("nMsg");
   msg.className="msg bad";
   if(!name){ msg.textContent="Bitte den Namen des Kunden eingeben."; $("nName").focus(); return; }
-  if(!validEmail(email)){ msg.textContent="Bitte eine gültige E-Mail-Adresse eingeben."; $("nEmail").focus(); return; }
-  if(ROWS.some(r=>r.kunde_email===email.toLowerCase() && r.jahr===jahr)){ msg.textContent=`Für ${email} gibt es schon einen Fall ${jahr}.`; return; }
+  if(email && !validEmail(email)){ msg.textContent="Bitte eine gültige E-Mail-Adresse eingeben."; $("nEmail").focus(); return; }
+  if(email && ROWS.some(r=>r.kunde_email===email.toLowerCase() && r.jahr===jahr)){ msg.textContent=`Für ${email} gibt es schon einen Fall ${jahr}.`; return; }
   $("nSubmit").disabled=true; msg.textContent="";
   try{
-    const r=await SP.createFall({name,email,jahr}); r._sum=summarize(r); ROWS.unshift(r); lastCreated=r;
-    $("inviteText").textContent=inviteText(r); $("openNew").href="upload.html?fall="+r.id; $("invite").hidden=false;
-    $("nName").value=""; $("nEmail").value=""; render();
+    const r=await SP.createFall({name,email,jahr});
+    location.href="upload.html?fall="+r.id; return;
   }catch(err){ msg.textContent="Fall konnte nicht eröffnet werden. Ist dein Konto als Prüfer eingetragen?"; }
   $("nSubmit").disabled=false;
 });
