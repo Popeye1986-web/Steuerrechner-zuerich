@@ -1,70 +1,51 @@
 # taxflix
 
-Steuerrechner für den Kanton Zürich mit Login: Belege erfassen, Positionen nach den Ziffern der Zürcher Steuererklärung ordnen, Staats-, Gemeinde- und Bundessteuer schätzen und die Werte für ZHprivateTax vorbereiten. Die Daten jeder Person werden in ihrem eigenen Konto gespeichert.
+Steuer-App für den Kanton Zürich: anmelden, Belege hochladen, Beträge auslesen lassen und das Ergebnis nach den Ziffern der Zürcher Steuererklärung sehen.
 
-## Dateien
+## Seiten
 
-| Datei | Zweck |
+| Datei | Seite |
 |---|---|
-| `index.html` | Leitet zum Rechner weiter (wird später durch die Startseite ersetzt) |
-| `login.html` | Anmelden, Konto erstellen, Passwort vergessen, neues Passwort |
-| `app.html` | Der Rechner. Nur nach dem Login erreichbar |
-| `auth.js` | Login, Abmelden, Laden und Speichern der Daten |
-| `config.js` | Zugangsdaten zu Supabase (musst du ausfüllen) |
-| `supabase/schema.sql` | Datenbanktabelle mit Zugriffsschutz |
+| `login.html` | 1 · Anmelden, Konto erstellen, Passwort vergessen |
+| `upload.html` | 2 · Situation erfassen, Liste der benötigten Belege, Upload und Beträge |
+| `ergebnis.html` | 3 · Steuern, Auswertung, alle Ziffern 1.1 bis 35 mit Staats- und Bundessteuer, Export |
+| `index.html`, `app.html` | Leiten zu `upload.html` weiter |
 
-## Einrichtung (einmalig, ca. 15 Minuten)
+Weitere Dateien: `taxcore.js` (Tarife und Berechnung), `auth.js` (Login und Speichern), `styles.css` (Aussehen), `config.js` (deine Supabase-Werte), `api/auslesen.js` (Server-Funktion fürs Auslesen), `supabase/*.sql` (Datenbank).
 
-### 1. Supabase-Projekt erstellen
-1. Auf [supabase.com](https://supabase.com) mit GitHub anmelden → **New project**.
-2. Name: `steuerpilot-zuerich`, ein sicheres Datenbank-Passwort wählen und notieren.
-3. Region: einen Standort in Europa wählen (für Steuerdaten wegen Datenschutz wichtig).
+## Einrichtung
 
-### 2. Tabelle anlegen
-1. Links **SQL Editor** → **New query**.
-2. Den ganzen Inhalt von `supabase/schema.sql` einfügen → **Run**.
-3. Es sollte «Success. No rows returned» erscheinen.
+Die Schritte für Supabase, Tabelle `steuerdaten` und `config.js` hast du schon erledigt. Neu dazu kommt:
 
-### 3. Zugangsdaten eintragen
-1. **Project Settings → API**.
-2. **Project URL** und den Schlüssel **anon public** kopieren.
-3. In `config.js` eintragen:
-   ```js
-   supabaseUrl: "https://abcdefgh.supabase.co",
-   supabaseAnonKey: "eyJhbGciOi..."
-   ```
-   Der Schlüssel **service_role** gehört niemals in diese Datei.
+### 1. Speicher für Belege anlegen
+1. Supabase → **SQL Editor** → **New query**.
+2. Inhalt von `supabase/speicher.sql` einfügen → **Run** → «Success».
 
-### 4. Adressen für E-Mail-Links eintragen
-Damit Bestätigungs- und Passwort-Mails auf deine Seite führen:
-1. **Authentication → URL Configuration**.
-2. **Site URL:** `https://steuerpilot-zuerich.vercel.app/login.html` (deine Vercel-Adresse).
-3. Unter **Redirect URLs** dieselbe Adresse hinzufügen.
+Damit werden hochgeladene Dateien gespeichert. Jede Person sieht nur ihre eigenen.
 
-### 5. Hochladen
-Alle Dateien und den Ordner `supabase` auf GitHub hochladen (bestehende Dateien ersetzen). Vercel veröffentlicht die neue Version automatisch.
+### 2. Automatisches Auslesen einschalten (optional, kostet pro Beleg ein paar Rappen)
+1. Auf [console.anthropic.com](https://console.anthropic.com) ein Konto erstellen, Guthaben aufladen und unter **API Keys** einen Schlüssel erstellen.
+2. In Vercel: Projekt → **Settings → Environment Variables**. Drei Einträge hinzufügen:
+   - `ANTHROPIC_API_KEY` = dein Anthropic-Schlüssel
+   - `SUPABASE_URL` = gleiche Project URL wie in `config.js`
+   - `SUPABASE_ANON_KEY` = gleicher Schlüssel wie in `config.js`
+3. Vercel → **Deployments** → beim neuesten Eintrag **⋯ → Redeploy**.
 
-### 6. Testen
-1. `https://<deine-adresse>/login.html` öffnen → **Konto erstellen**.
-2. Bestätigungs-Mail öffnen und auf den Link klicken.
-3. Anmelden, einen Wert im Rechner ändern. Oben rechts erscheint «Gespeichert».
-4. In Supabase unter **Table Editor → steuerdaten** siehst du eine Zeile für dein Konto.
+Ohne diesen Schritt funktioniert alles andere. Die Beträge trägt man dann direkt beim Beleg ein.
 
-## Gut zu wissen
+Der Anthropic-Schlüssel steht nur in Vercel, nie im Code. Die Funktion liest nur für angemeldete Personen aus.
 
-- **Ohne ausgefülltes `config.js`** läuft der Rechner ohne Login und speichert nur im Browser. Oben steht dann ein Hinweis.
-- **Zugriffsschutz:** Die Regeln in `schema.sql` sorgen dafür, dass jede Person nur ihre eigene Zeile lesen und ändern kann, auch wenn jemand den anon key kennt.
-- **E-Mails:** Supabase verschickt die Mails anfangs über einen eigenen Dienst mit wenigen Mails pro Stunde. Für echte Kunden unter **Authentication → Emails → SMTP Settings** einen eigenen Mail-Anbieter eintragen und die Texte auf Deutsch anpassen.
-- **Belege automatisch auslesen** funktioniert auf der eigenen Website noch nicht. Dafür braucht es eine Server-Funktion mit der Claude API.
+## Grenzen
 
-## Quellen der Tarife
+- PDFs bis 3 MB werden ausgelesen, grössere nur gespeichert. Fotos werden vor dem Senden verkleinert.
+- Nicht berechnet: Selbständigkeit im Detail, Kapitalleistungen (Ziffer 40), Teilsteuerpflicht (Ziffern 26, 36), Liegenschaften ausserhalb des Kantons.
+- Für 2026 sind Versicherungsabzug und Fahrkostenmaximum des Kantons noch mit den Werten 2025 hinterlegt.
 
-- Verordnung über den Ausgleich der kalten Progression, ZStB Nr. 48.1 (gültig ab 2024 bzw. ab 2026)
+## Quellen
+
+- Formular «Steuererklärung 2025» des Kantonalen Steueramts Zürich (Ziffern und Höchstbeträge)
+- Verordnung über den Ausgleich der kalten Progression, ZStB Nr. 48.1
 - Art. 36 DBG gemäss ESTV-Rundschreiben 2026
-- Wegleitung zur Steuererklärung 2025, Kantonales Steueramt Zürich
-
-Für 2026 sind Versicherungsabzug und Fahrkostenmaximum des Kantons noch mit den Werten 2025 hinterlegt.
-
-## Hinweis
+- Wegleitung zur Steuererklärung 2025, Kanton Zürich
 
 Schätzung ohne Gewähr. Massgebend ist die Veranlagung des Steueramts. Kein Angebot des Kantonalen Steueramts Zürich.

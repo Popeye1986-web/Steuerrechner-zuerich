@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ergebnis · taxflix</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="styles.css">
+<style>
+body.pending main{visibility:hidden}
+.intro{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;padding-block:36px 24px}
+.intro .acts{display:flex;flex-wrap:wrap;gap:8px}
+.hero{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px;align-items:stretch}
+@media (max-width:900px){.hero{grid-template-columns:minmax(0,1fr)}}
+.total{padding:26px;display:flex;flex-direction:column;gap:14px;background:linear-gradient(160deg,#2a0d10 0%,var(--sheet) 55%)}
+.total .big{font-family:var(--f-num);font-size:clamp(40px,6vw,60px);line-height:1;letter-spacing:-.03em}
+.sbar{display:flex;height:12px;border-radius:2px;overflow:hidden;background:var(--sheet-2)}
+.sbar span{display:block;height:100%}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13.5px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.kpi{padding:16px 18px;display:flex;flex-direction:column;gap:4px}
+.kpi .v{font-family:var(--f-num);font-size:24px;letter-spacing:-.02em}
+.kpi .s{font-size:13.5px;color:var(--muted)}
+.lines{display:flex;flex-direction:column;gap:6px}
+.line{display:flex;justify-content:space-between;gap:12px;font-size:15px}
+.line.sub{color:var(--muted);font-size:14px}
+.line.strong{font-weight:700;border-top:1px solid var(--line);padding-top:8px;margin-top:2px}
+.line .num{white-space:nowrap}
+section.block{margin-top:28px;display:flex;flex-direction:column;gap:14px}
+.tips{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.tip{padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+.tip p{font-size:15px;color:var(--info)}
+.tablebox{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:640px;font-size:15px}
+thead th{position:sticky;top:0;background:var(--sheet);text-align:left;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:12px 14px;border-bottom:1px solid var(--line)}
+th.r,td.r{text-align:right}
+td{padding:10px 14px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+td.zc{width:70px}
+tr.sec td{background:var(--bg);font-family:var(--f-display);font-size:15px;padding-top:18px;color:var(--ink);border-bottom:1px solid var(--line)}
+tr.summe td{font-weight:700}
+tr.total td{font-weight:700;background:var(--red-soft)}
+tr.total td.r{color:#fff}
+td .nt{display:block;font-size:13px;color:var(--muted);margin-top:2px}
+td.amt{font-family:var(--f-num);font-variant-numeric:tabular-nums;white-space:nowrap}
+.copy{border:1px solid var(--line);background:transparent;border-radius:4px;min-height:32px;padding:0 10px;font-size:13px;cursor:pointer;color:var(--muted)}
+.copy:hover{color:var(--ink);border-color:#555}
+.copy.done{border-color:var(--ok);color:var(--ok)}
+.docs{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px}
+.docs li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:var(--sheet);border:1px solid var(--line-soft);border-radius:4px;font-size:15px}
+.howto{padding:20px;display:flex;flex-direction:column;gap:10px}
+.howto ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;color:var(--info)}
+@media print{ .hero{grid-template-columns:1fr 1fr} .total{background:#fff} thead th{position:static} tr.total td{background:#eee} tr.total td.r{color:#000} .copy{display:none} }
+</style>
+</head>
+<body class="pending">
+<header class="top">
+  <div class="page">
+    <a class="wordmark" href="upload.html" aria-label="taxflix">tax<b>flix</b></a>
+    <ol class="steps" aria-label="Schritte">
+      <li><a href="upload.html"><span class="n">1</span>Belege</a></li>
+      <li><a href="ergebnis.html" aria-current="page"><span class="n">2</span>Ergebnis</a></li>
+    </ol>
+    <div class="account">
+      <span id="who"></span>
+      <button class="btn small" id="logout" type="button" hidden>Abmelden</button>
+    </div>
+  </div>
+</header>
+
+<main class="page" id="main">
+  <div class="intro">
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <span class="label" id="sub"></span>
+      <h1>Ihr Ergebnis</h1>
+    </div>
+    <div class="acts noprint">
+      <button class="btn" type="button" id="csv">CSV herunterladen</button>
+      <button class="btn" type="button" id="json">JSON herunterladen</button>
+      <button class="btn" type="button" id="print">Drucken / PDF</button>
+    </div>
+  </div>
+
+  <div id="empty" class="card empty" hidden>
+    <h2>Noch keine Werte erfasst</h2>
+    <p class="muted">Laden Sie zuerst Ihre Belege hoch oder tragen Sie die Beträge ein. Danach erscheint hier Ihre Auswertung.</p>
+    <a class="btn primary" href="upload.html">Zu den Belegen</a>
+  </div>
+
+  <div id="content" hidden>
+    <div class="hero">
+      <div class="card total">
+        <span class="label" id="totLabel"></span>
+        <span class="big" id="tot"></span>
+        <span class="muted" id="totSub"></span>
+        <div class="sbar" id="sbar" aria-hidden="true"></div>
+        <div class="legend" id="legend"></div>
+        <div class="lines" id="taxLines"></div>
+      </div>
+      <div class="kpis" id="kpis"></div>
+    </div>
+
+    <section class="block" aria-labelledby="h-tips">
+      <h2 id="h-tips">Auswertung</h2>
+      <div class="tips" id="tips"></div>
+    </section>
+
+    <section class="block" aria-labelledby="h-z">
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;align-items:baseline">
+        <h2 id="h-z">Steuererklärung Zürich nach Ziffern</h2>
+        <span class="note">Ziffern wie im Formular «Steuererklärung <span id="formYear"></span>» des Kantons Zürich</span>
+      </div>
+      <div class="card tablebox">
+        <table>
+          <thead><tr><th>Ziffer</th><th>Bezeichnung</th><th class="r">Staatssteuer CHF</th><th class="r">Bundessteuer CHF</th><th class="noprint"><span style="position:absolute;left:-9999px">Kopieren</span></th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="block" aria-labelledby="h-docs">
+      <h2 id="h-docs">Belege für die Einreichung</h2>
+      <ul class="docs" id="docs"></ul>
+    </section>
+
+    <section class="block noprint" aria-labelledby="h-how">
+      <div class="card howto">
+        <h2 id="h-how">So reichen Sie ein</h2>
+        <ol>
+          <li>ZHprivateTax öffnen und mit AGOV anmelden: <a href="https://www.zhprivatetax.ch" target="_blank" rel="noopener">zhprivatetax.ch</a></li>
+          <li>Die Beträge Ziffer für Ziffer übertragen. Mit «Kopieren» landet der Betrag in der Zwischenablage.</li>
+          <li>Bei jeder Position den passenden Beleg hochladen.</li>
+          <li>Die Werte von ZHprivateTax mit dieser Übersicht vergleichen und die Steuererklärung freigeben.</li>
+        </ol>
+        <p class="note">Schätzung ohne Gewähr. Massgebend ist die Veranlagung des Steueramts.</p>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer class="foot"><div class="page"><span>taxflix · Kein Angebot des Kantonalen Steueramts Zürich</span><span>Tarife: ZStB 48.1, Art. 36 DBG, Formular Steuererklärung ZH 2025</span></div></footer>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script src="taxcore.js"></script>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const { nf, nf2, chf } = TX;
+let S=null, R=null;
+function el(tag, attrs, ...kids){ const e=document.createElement(tag); for(const [k,v] of Object.entries(attrs||{})){ if(v==null||v===false) continue; if(k==="class") e.className=v; else if(k==="text") e.textContent=v; else if(k.startsWith("on")) e.addEventListener(k.slice(2),v); else e.setAttribute(k, v===true?"":v); } for(const c of kids) if(c!=null) e.append(c); return e; }
+function toast(t){ const e=$("toast"); e.textContent=t; e.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>e.hidden=true,2200); }
+const fmt = v => v==null ? "–" : nf.format(Math.round(v));
+const pct = v => nf2.format(v*100).replace(/0$/,"") + " %";
+
+function copyBtn(value, label){
+  const b=el("button",{class:"copy",type:"button",text:"Kopieren","aria-label":"Betrag kopieren: "+label});
+  b.addEventListener("click",()=>{ navigator.clipboard.writeText(String(Math.round(value))).then(()=>{ b.textContent="Kopiert"; b.classList.add("done"); setTimeout(()=>{b.textContent="Kopieren"; b.classList.remove("done");},1500); }).catch(()=>toast("Kopieren nicht möglich")); });
+  return b;
+}
+
+function render(){
+  R = TX.calc(S);
+  const hasData = S.items.some(i=>+i.amount>0);
+  $("empty").hidden = hasData; $("content").hidden = !hasData;
+  const fam = TX.married(S) ? "Ehepaar" : "Alleinstehend";
+  $("sub").textContent = `Steuerperiode ${S.year} · ${fam}${S.kinder?`, ${S.kinder} Kind${S.kinder>1?"er":""}`:""} · Gemeindesteuerfuss ${S.gfuss} %`;
+  $("formYear").textContent = S.year;
+  if(!hasData) return;
+  const T=R.T;
+
+  // Total und Aufteilung
+  $("totLabel").textContent = `Geschätzte Steuern ${S.year}`;
+  $("tot").textContent = chf(T.total);
+  $("totSub").textContent = R.ein>0 ? `${pct(T.total/R.ein)} der Einkünfte · monatlich rund ${chf(T.total/12)}` : "";
+  const parts=[["Staat",T.kanton,"var(--red)"],["Gemeinde",T.gemeinde,"#f3f3f3"],["Bund",T.bund,"#8c8c8c"],["Kirche",T.kirche,"#f5b041"],["Personalsteuer",T.personal,"#555"]].filter(p=>p[1]>0.5);
+  $("sbar").replaceChildren(...parts.map(p=>el("span",{style:`width:${(p[1]/T.total*100).toFixed(2)}%;background:${p[2]}`})));
+  $("legend").replaceChildren(...parts.map(p=>el("span",{}, el("i",{style:"background:"+p[2]}), p[0])));
+  const L=(l,v,c)=>el("div",{class:"line"+(c?" "+c:"")}, el("span",{text:l}), el("span",{class:"num",text:chf(v)}));
+  $("taxLines").replaceChildren(
+    L(`Einfache Staatssteuer Einkommen (${T.fam?"Verheiratetentarif":"Grundtarif"})`, T.einfE, "sub"),
+    L("Einfache Staatssteuer Vermögen", T.einfV, "sub"),
+    L(`Staatssteuer ${R.Z.kfuss} %`, T.kanton), L(`Gemeindesteuer ${S.gfuss} %`, T.gemeinde),
+    ...(T.kirche>0?[L(`Kirchensteuer ${S.kfuss} %`, T.kirche)]:[]),
+    L("Personalsteuer", T.personal), L("Direkte Bundessteuer", T.bund), L("Total", T.total, "strong"));
+
+  const K=(lab,v,s)=>el("div",{class:"card kpi"}, el("span",{class:"label",text:lab}), el("span",{class:"v",text:v}), el("span",{class:"s",text:s}));
+  const kp=[
+    K("Steuerbares Einkommen Staat", chf(R.stE), "Ziffer 25, Staats- und Gemeindesteuer"),
+    K("Steuerbares Einkommen Bund", chf(R.stB), "Ziffer 25, direkte Bundessteuer"),
+    K("Steuerbares Vermögen", chf(R.verm), "Ziffer 35"),
+    K("Grenzsteuersatz", pct(R.grenz), "Steuer auf den nächsten Franken Einkommen"),
+    ...(R.vst>0?[K("Verrechnungssteuer zurück", chf(R.vst), "Wird bei der Steuer gutgeschrieben")]:[]),
+    K("Total Einkünfte", chf(R.ein), "Ziffer 7")];
+  if(kp.length%2) kp.pop();
+  $("kpis").replaceChildren(...kp);
+
+  renderTips(); renderRows(); renderDocs();
+}
+
+function renderTips(){
+  const tips=[], T=R.T;
+  const add=(kind,title,text)=>tips.push(el("article",{class:"card tip"}, el("span",{class:"pill "+kind,text:title}), el("p",{text})));
+  R.P.forEach(x=>{
+    const slot = TX.checklist(S).find(c=>c.slot==="saeule3a:"+x.p);
+    const docMissing = S.sit.saeule3a[x.p] && slot && slot.status==="fehlt";
+    if(x.lohn>0 && S.persons[x.p].pk && x.s3aEff < TX.S3A_PK && !docMissing){
+      const gap=TX.S3A_PK-x.s3aEff, save=gap*R.grenz, who=R.np===2?TX.personName(S,x.p)+": ":"";
+      add("ok","Sparpotenzial Säule 3a", S.year>=2026
+        ? `${who}Mit weiteren ${chf(gap)} in die Säule 3a bis 31. Dezember ${S.year} sparen Sie rund ${chf(save)} Steuern.`
+        : `${who}${chf(gap)} bis zum Maximum der Säule 3a waren noch offen. Das hätte rund ${chf(save)} Steuern gespart. Für 2026 lohnt sich die volle Einzahlung.`);
+    }
+  });
+  if(R.versAkt===0) add("warn","Prämienabzug fehlt", `Es sind keine Versicherungsprämien erfasst. Mit der Prämienbescheinigung der Krankenkasse können Sie bis ${chf(R.capS)} abziehen.`);
+  else if(R.versAkt>R.capS) add("mute","Prämien über dem Höchstbetrag", `Von ${chf(R.versAkt)} Prämien sind bei der Staatssteuer ${chf(R.capS)} abzugsfähig. Weitere Prämienbelege bringen keinen zusätzlichen Abzug.`);
+  const need=TX.checklist(S).filter(c=>c.needed && c.status==="fehlt");
+  if(need.length) add("bad",`${need.length} Beleg${need.length>1?"e":""} fehlen`, "Noch offen: "+need.slice(0,3).map(c=>c.type.name+(c.person!=="g"&&R.np===2?" ("+TX.personName(S,c.person)+")":"")).join(", ")+(need.length>3?" und weitere":"")+". Ohne diese Werte ist das Ergebnis unvollständig.");
+  if(R.vst>0) add("ok","Verrechnungssteuer", `${chf(R.vst)} erhalten Sie zurück. Dafür die Erträge im Wertschriftenverzeichnis angeben.`);
+  const sp=TX.valueOf(S,"spenden"); if(sp>0 && sp<100) add("warn","Spenden zu tief", "Spenden sind erst ab CHF 100 pro Jahr abzugsfähig.");
+  add("mute","Effektiv und Grenzsatz", `Sie zahlen im Schnitt ${pct(T.total/Math.max(1,R.ein))} Ihrer Einkünfte. Jeder zusätzliche Abzug von CHF 1'000 spart Ihnen rund ${chf(R.grenz*1000)}.`);
+  $("tips").replaceChildren(...tips);
+}
+
+function renderRows(){
+  const tb=$("rows"); tb.replaceChildren(); let sec=null;
+  for(const r of R.rows){
+    if(r.sec!==sec){ sec=r.sec; tb.append(el("tr",{class:"sec"}, el("td",{colspan:"5",text:sec}))); }
+    const same = r.b!=null && Math.round(r.s)===Math.round(r.b);
+    tb.append(el("tr",{class:r.kind==="wert"?"":r.kind},
+      el("td",{class:"zc"}, el("span",{class:"z",text:r.z})),
+      el("td",{}, r.l, r.note?el("span",{class:"nt",text:r.note}):null),
+      el("td",{class:"r amt",text:fmt(r.s)}),
+      el("td",{class:"r amt",text: r.b==null ? "–" : fmt(r.b), style: same?"color:var(--muted)":null}),
+      el("td",{class:"noprint"}, r.kind==="wert"||r.kind==="total" ? copyBtn(r.s, "Ziffer "+r.z+" "+r.l) : null)));
+  }
+}
+
+function renderDocs(){
+  const ul=$("docs"); ul.replaceChildren();
+  for(const c of TX.checklist(S).filter(c=>c.needed || c.docs.length)){
+    if(c.status==="na") continue;
+    const who=c.person!=="g"&&R.np===2?" · "+TX.personName(S,c.person):"";
+    const pill = c.docs.length ? el("span",{class:"pill ok",text:c.docs.length+" Datei"+(c.docs.length>1?"en":"")}) : c.status==="werte" ? el("span",{class:"pill warn",text:"Nur Werte"}) : el("span",{class:"pill bad",text:"Fehlt"});
+    ul.append(el("li",{}, el("span",{text:c.type.name+who}), pill));
+  }
+}
+
+/* ---------- Export ---------- */
+function download(name, text, type){
+  const url=URL.createObjectURL(new Blob([text],{type}));
+  const a=el("a",{href:url,download:name}); document.body.append(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+$("csv").addEventListener("click",()=>{
+  const q=s=>{ s=String(s??""); return /[;"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; };
+  const lines=[["Ziffer","Bezeichnung","Staatssteuer CHF","Bundessteuer CHF"]];
+  for(const r of R.rows) lines.push([r.z,r.l,Math.round(r.s),r.b==null?"":Math.round(r.b)]);
+  lines.push([]); const T=R.T;
+  for(const [l,v] of [["Staatssteuer",T.kanton],["Gemeindesteuer",T.gemeinde],["Kirchensteuer",T.kirche],["Personalsteuer",T.personal],["Direkte Bundessteuer",T.bund],["Total",T.total]]) lines.push(["",l,Math.round(v),""]);
+  download(`taxflix-${S.year}.csv`, "﻿"+lines.map(r=>r.map(q).join(";")).join("\n"), "text/csv");
+});
+$("json").addEventListener("click",()=>{
+  const T=R.T;
+  download(`taxflix-${S.year}.json`, JSON.stringify({ steuerperiode:S.year, kanton:"ZH",
+    ziffern:R.rows.map(r=>({ziffer:r.z, bezeichnung:r.l, staatssteuer:Math.round(r.s), bundessteuer:r.b==null?null:Math.round(r.b)})),
+    steuern:{staat:Math.round(T.kanton), gemeinde:Math.round(T.gemeinde), kirche:Math.round(T.kirche), personal:T.personal, bund:Math.round(T.bund), total:Math.round(T.total)}}, null, 2), "application/json");
+});
+$("print").addEventListener("click",()=>window.print());
+
+(async function boot(){
+  const { state, user } = await TX.loadState();
+  S=state;
+  if(user){ $("who").textContent=user.email||""; $("logout").hidden=false; $("logout").addEventListener("click",()=>SP.logout());
+    SP.client.auth.onAuthStateChange(ev=>{ if(ev==="SIGNED_OUT") location.replace("login.html"); }); }
+  document.body.classList.remove("pending");
+  render();
+})();
+</script>
+</body>
+</html>

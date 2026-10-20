@@ -8,7 +8,7 @@ window.SP = (function () {
     ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey)
     : null;
   const TABLE = "steuerdaten";
-  const ALLOWED_NEXT = ["app.html"];
+  const ALLOWED_NEXT = ["upload.html", "ergebnis.html"];
 
   async function getUser() {
     if (!client) return null;
@@ -21,7 +21,7 @@ window.SP = (function () {
     if (!client) return null;
     const user = await getUser();
     if (!user) {
-      const page = location.pathname.split("/").pop() || "app.html";
+      const page = location.pathname.split("/").pop() || "upload.html";
       location.replace("login.html?next=" + encodeURIComponent(page));
       return new Promise(() => {});
     }
@@ -30,7 +30,7 @@ window.SP = (function () {
 
   function nextPage() {
     const n = new URLSearchParams(location.search).get("next");
-    return ALLOWED_NEXT.includes(n) ? n : "app.html";
+    return ALLOWED_NEXT.includes(n) ? n : "upload.html";
   }
 
   async function logout() {
