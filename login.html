@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Anmelden · Steuerpilot Zürich</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=Source+Sans+3:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --paper:#f5f7f9; --sheet:#ffffff; --ink:#14212e; --muted:#4f5d6b; --line:#d6dde4; --line-soft:#e7ecf0;
+  --zh:#0b4f8a; --zh-hover:#083a66; --zh-soft:#e3edf6; --zh-ink:#ffffff;
+  --panel:#14212e; --panel-ink:#ffffff; --panel-muted:#a9c6e4;
+  --ok:#1f6b44; --ok-soft:#e1f2e9; --bad:#b3261e; --bad-soft:#fae3e1;
+  --f-display:"Familjen Grotesk","Helvetica Neue",Arial,sans-serif;
+  --f-body:"Source Sans 3","Segoe UI",system-ui,sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0f161d; --sheet:#16202a; --ink:#e4ebf1; --muted:#9fadba; --line:#2c3a47; --line-soft:#223040;
+  --zh:#6fb0ea; --zh-hover:#93c4f0; --zh-soft:#1b3550; --zh-ink:#0b1622;
+  --panel:#0b1622; --panel-ink:#e4ebf1; --panel-muted:#8fb4d8;
+  --ok:#5fcf97; --ok-soft:#143326; --bad:#ff8a80; --bad-soft:#3d1a18; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0f161d; --sheet:#16202a; --ink:#e4ebf1; --muted:#9fadba; --line:#2c3a47; --line-soft:#223040;
+  --zh:#6fb0ea; --zh-hover:#93c4f0; --zh-soft:#1b3550; --zh-ink:#0b1622;
+  --panel:#0b1622; --panel-ink:#e4ebf1; --panel-muted:#8fb4d8;
+  --ok:#5fcf97; --ok-soft:#143326; --bad:#ff8a80; --bad-soft:#3d1a18; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5}
+[hidden]{display:none!important}
+a{color:var(--zh)} a:hover{color:var(--zh-hover)}
+:focus-visible{outline:2px solid var(--zh);outline-offset:2px}
+.layout{min-height:100vh;display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr)}
+@media (max-width:860px){.layout{grid-template-columns:minmax(0,1fr)}.side{display:none!important}}
+
+.side{background:var(--panel);color:var(--panel-ink);padding:48px max(32px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;justify-content:space-between;gap:40px}
+.brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit}
+.mark{width:36px;height:36px;border-radius:4px;background:var(--zh);color:var(--zh-ink);display:grid;place-items:center;font-family:var(--f-display);font-weight:700;font-size:15px}
+.brand span:last-child{font-family:var(--f-display);font-weight:700;font-size:20px}
+.side h2{font-family:var(--f-display);font-size:34px;line-height:1.1;margin:0;max-width:14em;text-wrap:balance}
+.ledger{list-style:none;margin:0;padding:0;border-top:1px solid rgba(169,198,228,.25);max-width:420px}
+.ledger li{display:grid;grid-template-columns:56px 1fr auto;gap:12px;padding:12px 0;border-bottom:1px solid rgba(169,198,228,.25);font-size:15px}
+.ledger .z{font-family:var(--f-num);color:var(--panel-muted)}
+.ledger .v{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.side small{color:var(--panel-muted);font-size:14px}
+
+.main{display:flex;flex-direction:column;justify-content:center;align-items:center;padding-block:40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.mobile-brand{display:none;margin-bottom:28px}
+@media (max-width:860px){.mobile-brand{display:flex;color:var(--ink)}}
+.card{width:100%;max-width:440px;display:flex;flex-direction:column;gap:22px}
+h1{font-family:var(--f-display);font-size:32px;line-height:1.1;margin:0;letter-spacing:-.01em}
+.lead{margin:0;color:var(--muted)}
+.tabs{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:6px;padding:4px;background:var(--sheet)}
+.tabs button{min-height:44px;border:0;border-radius:4px;background:transparent;color:var(--muted);font:inherit;font-weight:600;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--zh);color:var(--zh-ink)}
+form{display:flex;flex-direction:column;gap:16px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-weight:600;font-size:15px}
+.field input{min-height:48px;padding:10px 12px;border:1px solid var(--line);border-radius:4px;background:var(--sheet);color:var(--ink);font:inherit}
+.field input:focus{border-color:var(--zh)}
+.hint{font-size:14px;color:var(--muted)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.linkbtn{border:0;background:none;padding:6px 0;color:var(--zh);font:inherit;font-size:15px;cursor:pointer;text-decoration:underline}
+.primary{min-height:50px;border:0;border-radius:4px;background:var(--zh);color:var(--zh-ink);font:inherit;font-weight:600;font-size:17px;cursor:pointer}
+.primary:hover{background:var(--zh-hover)}
+.primary:disabled{opacity:.6;cursor:default}
+.msg{border-radius:4px;padding:12px 14px;font-size:15px}
+.msg.ok{background:var(--ok-soft);color:var(--ok)}
+.msg.bad{background:var(--bad-soft);color:var(--bad)}
+.setup{border:1px solid var(--line);background:var(--sheet);border-radius:6px;padding:16px;display:flex;flex-direction:column;gap:8px;font-size:15px}
+.setup code{font-family:var(--f-num);font-size:14px}
+.fine{font-size:14px;color:var(--muted);margin:0}
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="side" aria-label="Steuerpilot Zürich">
+    <a class="brand" href="index.html"><span class="mark">ZH</span><span>Steuerpilot Zürich</span></a>
+    <div style="display:flex;flex-direction:column;gap:28px">
+      <h2>Ihre Steuererklärung wartet dort, wo Sie aufgehört haben.</h2>
+      <ul class="ledger" aria-label="Beispiel für erkannte Werte">
+        <li><span class="z">1.1</span><span>Nettolohn</span><span class="v">92 400</span></li>
+        <li><span class="z">4.1</span><span>Ertrag Wertschriften</span><span class="v">420</span></li>
+        <li><span class="z">11</span><span>Berufsauslagen</span><span class="v">6 852</span></li>
+      </ul>
+    </div>
+    <small>Kein Angebot des Kantonalen Steueramts Zürich</small>
+  </aside>
+
+  <main class="main">
+    <a class="brand mobile-brand" href="index.html"><span class="mark">ZH</span><span>Steuerpilot Zürich</span></a>
+    <div class="card">
+
+      <div class="setup" id="setup" hidden>
+        <strong>Login ist noch nicht eingerichtet</strong>
+        <span>Tragen Sie in <code>config.js</code> die Project URL und den anon key aus Supabase ein.</span>
+        <a href="app.html">Rechner ohne Login öffnen (Daten nur in diesem Browser)</a>
+      </div>
+
+      <!-- Anmelden und Registrieren -->
+      <section id="view-auth" aria-labelledby="authTitle" style="display:flex;flex-direction:column;gap:22px">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <h1 id="authTitle">Anmelden</h1>
+          <p class="lead" id="authLead">Melden Sie sich an, um Ihre Belege und Werte weiterzubearbeiten.</p>
+        </div>
+        <div class="tabs" role="tablist" aria-label="Anmelden oder registrieren">
+          <button type="button" role="tab" id="tab-login" aria-selected="true" aria-controls="form-auth">Anmelden</button>
+          <button type="button" role="tab" id="tab-register" aria-selected="false" aria-controls="form-auth">Konto erstellen</button>
+        </div>
+        <form id="form-auth" novalidate>
+          <div class="field">
+            <label for="email">E-Mail</label>
+            <input id="email" type="email" autocomplete="email" required>
+          </div>
+          <div class="field">
+            <label for="password">Passwort</label>
+            <input id="password" type="password" autocomplete="current-password" required minlength="8">
+            <span class="hint" id="pwHint" hidden>Mindestens 8 Zeichen.</span>
+          </div>
+          <div class="field" id="repeatWrap" hidden>
+            <label for="password2">Passwort wiederholen</label>
+            <input id="password2" type="password" autocomplete="new-password" minlength="8">
+          </div>
+          <div class="row" id="forgotRow">
+            <span></span>
+            <button type="button" class="linkbtn" id="toForgot">Passwort vergessen?</button>
+          </div>
+          <div class="msg" id="authMsg" role="status" hidden></div>
+          <button type="submit" class="primary" id="authSubmit">Anmelden</button>
+          <p class="fine" id="terms" hidden>Mit dem Erstellen eines Kontos akzeptieren Sie die <a href="#">AGB</a> und die <a href="#">Datenschutzerklärung</a>.</p>
+        </form>
+      </section>
+
+      <!-- Passwort vergessen -->
+      <section id="view-forgot" aria-labelledby="forgotTitle" hidden style="display:flex;flex-direction:column;gap:22px">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <h1 id="forgotTitle">Passwort zurücksetzen</h1>
+          <p class="lead">Wir schicken Ihnen einen Link, mit dem Sie ein neues Passwort setzen.</p>
+        </div>
+        <form id="form-forgot" novalidate>
+          <div class="field">
+            <label for="emailForgot">E-Mail</label>
+            <input id="emailForgot" type="email" autocomplete="email" required>
+          </div>
+          <div class="msg" id="forgotMsg" role="status" hidden></div>
+          <button type="submit" class="primary" id="forgotSubmit">Link senden</button>
+          <button type="button" class="linkbtn" id="backToLogin" style="align-self:flex-start">Zurück zur Anmeldung</button>
+        </form>
+      </section>
+
+      <!-- Neues Passwort nach dem Link -->
+      <section id="view-reset" aria-labelledby="resetTitle" hidden style="display:flex;flex-direction:column;gap:22px">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <h1 id="resetTitle">Neues Passwort setzen</h1>
+          <p class="lead">Wählen Sie ein Passwort mit mindestens 8 Zeichen.</p>
+        </div>
+        <form id="form-reset" novalidate>
+          <div class="field">
+            <label for="newPassword">Neues Passwort</label>
+            <input id="newPassword" type="password" autocomplete="new-password" required minlength="8">
+          </div>
+          <div class="msg" id="resetMsg" role="status" hidden></div>
+          <button type="submit" class="primary" id="resetSubmit">Passwort speichern</button>
+        </form>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const sb = SP.client;
+let mode = "login";
+const isRecovery = /type=recovery/.test(location.hash);
+
+function show(view){
+  for(const v of ["auth","forgot","reset"]) $("view-"+v).hidden = v!==view;
+}
+function message(el, text, kind){ el.textContent = text; el.className = "msg " + kind; el.hidden = !text; }
+function busy(btn, on, label){ btn.disabled = on; if(label) btn.textContent = label; }
+
+function setMode(m){
+  mode = m;
+  const reg = m==="register";
+  $("tab-login").setAttribute("aria-selected", String(!reg));
+  $("tab-register").setAttribute("aria-selected", String(reg));
+  $("authTitle").textContent = reg ? "Konto erstellen" : "Anmelden";
+  $("authLead").textContent = reg ? "Ein Konto pro Haushalt genügt. Ihre Werte werden darin gespeichert." : "Melden Sie sich an, um Ihre Belege und Werte weiterzubearbeiten.";
+  $("authSubmit").textContent = reg ? "Konto erstellen" : "Anmelden";
+  $("repeatWrap").hidden = !reg; $("pwHint").hidden = !reg; $("terms").hidden = !reg; $("forgotRow").hidden = reg;
+  $("password").autocomplete = reg ? "new-password" : "current-password";
+  message($("authMsg"), "", "ok");
+}
+
+function germanError(err){
+  const m = (err && (err.message || err.error_description || "")).toLowerCase();
+  if(m.includes("invalid login")) return "E-Mail oder Passwort stimmt nicht.";
+  if(m.includes("email not confirmed")) return "Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse. Den Link finden Sie in Ihrem Postfach.";
+  if(m.includes("already registered") || m.includes("already been registered")) return "Für diese E-Mail gibt es schon ein Konto. Bitte melden Sie sich an.";
+  if(m.includes("password should be") || m.includes("weak")) return "Das Passwort ist zu schwach. Bitte mindestens 8 Zeichen verwenden.";
+  if(m.includes("rate limit") || m.includes("too many")) return "Zu viele Versuche. Bitte warten Sie einige Minuten.";
+  if(m.includes("failed to fetch") || m.includes("network")) return "Keine Verbindung. Bitte prüfen Sie Ihre Internetverbindung.";
+  if(m.includes("same") && m.includes("password")) return "Das neue Passwort muss sich vom alten unterscheiden.";
+  return "Das hat nicht geklappt. Bitte versuchen Sie es erneut.";
+}
+const validEmail = v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+const redirectUrl = () => location.origin + location.pathname.replace(/[^/]*$/, "") + "login.html";
+
+$("tab-login").addEventListener("click", ()=>setMode("login"));
+$("tab-register").addEventListener("click", ()=>setMode("register"));
+$("toForgot").addEventListener("click", ()=>{ $("emailForgot").value = $("email").value; show("forgot"); $("emailForgot").focus(); });
+$("backToLogin").addEventListener("click", ()=>{ show("auth"); setMode("login"); });
+
+$("form-auth").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const msg = $("authMsg"), btn = $("authSubmit");
+  const email = $("email").value.trim(), pw = $("password").value;
+  if(!sb){ message(msg, "Login ist noch nicht eingerichtet. Siehe Hinweis oben.", "bad"); return; }
+  if(!validEmail(email)){ message(msg, "Bitte eine gültige E-Mail-Adresse eingeben.", "bad"); $("email").focus(); return; }
+  if(pw.length < 8){ message(msg, "Das Passwort braucht mindestens 8 Zeichen.", "bad"); $("password").focus(); return; }
+  if(mode==="register" && pw !== $("password2").value){ message(msg, "Die beiden Passwörter stimmen nicht überein.", "bad"); $("password2").focus(); return; }
+  const label = btn.textContent; busy(btn, true, mode==="register" ? "Konto wird erstellt …" : "Anmelden …");
+  try{
+    if(mode==="register"){
+      const { data, error } = await sb.auth.signUp({ email, password: pw, options:{ emailRedirectTo: redirectUrl() } });
+      if(error) throw error;
+      if(data.session){ location.replace(SP.nextPage()); return; }
+      message(msg, "Fast geschafft. Wir haben Ihnen eine E-Mail geschickt. Klicken Sie auf den Link darin, um Ihr Konto zu bestätigen.", "ok");
+      $("password").value = ""; $("password2").value = "";
+    } else {
+      const { error } = await sb.auth.signInWithPassword({ email, password: pw });
+      if(error) throw error;
+      location.replace(SP.nextPage()); return;
+    }
+  }catch(err){ message(msg, germanError(err), "bad"); }
+  busy(btn, false, label);
+});
+
+$("form-forgot").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const msg = $("forgotMsg"), btn = $("forgotSubmit"), email = $("emailForgot").value.trim();
+  if(!sb){ message(msg, "Login ist noch nicht eingerichtet.", "bad"); return; }
+  if(!validEmail(email)){ message(msg, "Bitte eine gültige E-Mail-Adresse eingeben.", "bad"); return; }
+  busy(btn, true, "Wird gesendet …");
+  try{
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: redirectUrl() });
+    if(error) throw error;
+    message(msg, "Falls ein Konto mit dieser Adresse existiert, ist der Link unterwegs. Bitte prüfen Sie auch den Spam-Ordner.", "ok");
+  }catch(err){ message(msg, germanError(err), "bad"); }
+  busy(btn, false, "Link senden");
+});
+
+$("form-reset").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const msg = $("resetMsg"), btn = $("resetSubmit"), pw = $("newPassword").value;
+  if(pw.length < 8){ message(msg, "Das Passwort braucht mindestens 8 Zeichen.", "bad"); return; }
+  busy(btn, true, "Wird gespeichert …");
+  try{
+    const { error } = await sb.auth.updateUser({ password: pw });
+    if(error) throw error;
+    message(msg, "Passwort gespeichert. Sie werden weitergeleitet.", "ok");
+    setTimeout(()=>location.replace("app.html"), 1200); return;
+  }catch(err){ message(msg, germanError(err), "bad"); }
+  busy(btn, false, "Passwort speichern");
+});
+
+(async ()=>{
+  if(!sb){ $("setup").hidden = false; return; }
+  sb.auth.onAuthStateChange((event)=>{ if(event==="PASSWORD_RECOVERY") show("reset"); });
+  if(isRecovery){ show("reset"); return; }
+  const user = await SP.getUser();
+  if(user) location.replace(SP.nextPage());
+})();
+</script>
+</body>
+</html>
