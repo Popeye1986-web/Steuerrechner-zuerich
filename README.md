@@ -7,7 +7,7 @@ Steuer-App für den Kanton Zürich: anmelden, Belege hochladen, Beträge auslese
 | Datei | Seite |
 |---|---|
 | `login.html` | 1 · Anmelden, Konto erstellen, Passwort vergessen |
-| `upload.html` | 2 · Situation erfassen, Liste der benötigten Belege, Upload und Beträge |
+| `upload.html` | 2 · Alle Belege hochladen. Typ, Personen, Zivilstand, Kinder, Gemeinde und Beträge werden erkannt, nur Fehlendes wird gefragt |
 | `ergebnis.html` | 3 · Steuern, Auswertung, alle Ziffern 1.1 bis 35 mit Staats- und Bundessteuer, Export |
 | `index.html`, `app.html` | Leiten zu `upload.html` weiter |
 
@@ -23,7 +23,7 @@ Die Schritte für Supabase, Tabelle `steuerdaten` und `config.js` hast du schon 
 
 Damit werden hochgeladene Dateien gespeichert. Jede Person sieht nur ihre eigenen.
 
-### 2. Automatisches Auslesen einschalten (optional, kostet pro Beleg ein paar Rappen)
+### 2. Automatisches Auslesen einschalten (nötig für die Erkennung, kostet pro Beleg ein paar Rappen)
 1. Auf [console.anthropic.com](https://console.anthropic.com) ein Konto erstellen, Guthaben aufladen und unter **API Keys** einen Schlüssel erstellen.
 2. In Vercel: Projekt → **Settings → Environment Variables**. Drei Einträge hinzufügen:
    - `ANTHROPIC_API_KEY` = dein Anthropic-Schlüssel
@@ -31,7 +31,7 @@ Damit werden hochgeladene Dateien gespeichert. Jede Person sieht nur ihre eigene
    - `SUPABASE_ANON_KEY` = gleicher Schlüssel wie in `config.js`
 3. Vercel → **Deployments** → beim neuesten Eintrag **⋯ → Redeploy**.
 
-Ohne diesen Schritt funktioniert alles andere. Die Beträge trägt man dann direkt beim Beleg ein.
+Ohne diesen Schritt werden die Belege nur gespeichert. Typ, Beträge und Angaben zum Haushalt trägt man dann von Hand ein.
 
 Der Anthropic-Schlüssel steht nur in Vercel, nie im Code. Die Funktion liest nur für angemeldete Personen aus.
 

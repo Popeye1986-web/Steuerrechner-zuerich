@@ -9,49 +9,58 @@
 <link rel="stylesheet" href="styles.css">
 <style>
 body.pending main{visibility:hidden}
-.intro{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:20px;padding-block:36px 24px}
-.intro .left{display:flex;flex-direction:column;gap:10px;min-width:0}
-.progress{display:flex;flex-direction:column;gap:8px;min-width:260px;flex:0 1 360px}
-.bar{height:8px;border-radius:99px;background:var(--sheet-2);overflow:hidden}
-.bar span{display:block;height:100%;background:var(--red);transition:width .3s}
-.layout{display:grid;grid-template-columns:340px minmax(0,1fr);gap:24px;align-items:start}
-@media (max-width:960px){.layout{grid-template-columns:minmax(0,1fr)}}
-aside.sit{position:sticky;top:84px;display:flex;flex-direction:column}
-@media (max-width:960px){aside.sit{position:static}}
-.sit section{padding:16px 18px;border-bottom:1px solid var(--line-soft);display:flex;flex-direction:column;gap:12px}
-.sit section:last-child{border-bottom:0}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.flags{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:2px 14px;align-items:center;font-size:15px}
-.flags .h{font-size:12px;color:var(--muted);font-weight:600;text-align:center}
-.flags input{width:18px;height:18px;accent-color:var(--red);justify-self:center}
-details.person{border:1px solid var(--line-soft);border-radius:4px}
-details.person summary{cursor:pointer;padding:10px 12px;font-weight:600;font-size:15px}
-details.person .in{padding:0 12px 12px;display:flex;flex-direction:column;gap:10px}
-.list{display:flex;flex-direction:column;gap:14px}
-.group-title{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:8px}
-.doc{padding:18px;display:flex;flex-direction:column;gap:14px}
-.doc.done{border-color:#24412d}
-.doc .head{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between}
-.doc .title{display:flex;flex-direction:column;gap:4px;min-width:0}
-.doc .title h3{font-size:18px}
-.doc .chips{display:flex;gap:6px;flex-wrap:wrap}
-.doc .acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.files{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
-.files li{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 12px;background:var(--sheet-2);border-radius:4px}
-.files .fn{flex:1 1 180px;min-width:0;overflow-wrap:anywhere;font-weight:600;font-size:15px}
-.files .fm{flex-basis:100%;font-size:13.5px;color:var(--muted)}
-.fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px 14px}
-.fields .field label{display:flex;gap:8px;align-items:baseline;justify-content:space-between}
-.na-list{display:flex;flex-wrap:wrap;gap:8px}
-.drop-hint{border:1.5px dashed var(--line);border-radius:4px}
-.doc.over{border-color:var(--red)}
-.next{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:18px}
+.intro{display:flex;flex-direction:column;gap:12px;padding-block:36px 20px;max-width:760px}
+.drop{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:40px 20px;border:2px dashed #4a4a4a;border-radius:8px;background:linear-gradient(180deg,rgba(225,29,42,.08),rgba(225,29,42,0));cursor:pointer;transition:border-color .15s,background .15s}
+.drop:hover,.drop.over{border-color:var(--red);background:linear-gradient(180deg,rgba(225,29,42,.16),rgba(225,29,42,.02))}
+.drop strong{font-family:var(--f-display);font-weight:400;font-size:clamp(22px,3vw,30px);letter-spacing:-.02em}
+.drop .sub{color:var(--muted)}
+.drop .fake{margin-top:6px;pointer-events:none}
+.typical{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:14px}
+.typical span{font-size:13.5px;padding:5px 10px;border:1px solid var(--line);border-radius:99px;color:var(--muted)}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:24px;align-items:start;margin-top:28px}
+.layout>.side{grid-column:2;grid-row:1;display:flex;flex-direction:column;gap:16px;position:sticky;top:84px}
+.layout>.docs{grid-column:1;grid-row:1;display:flex;flex-direction:column;gap:12px;min-width:0}
+@media (max-width:960px){.layout{grid-template-columns:minmax(0,1fr)}.layout>.side,.layout>.docs{grid-column:1;grid-row:auto;position:static}}
+.head2{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.doc{padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.doc .row1{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.doc .nm{flex:1 1 220px;min-width:0;display:flex;flex-direction:column;gap:2px}
+.doc .nm b{overflow-wrap:anywhere}
+.doc .nm span{font-size:14px;color:var(--muted)}
+.doc .btns{display:flex;gap:6px;flex-wrap:wrap}
+.doc details summary{cursor:pointer;font-size:14px;color:var(--muted);list-style:none;display:inline-flex;gap:6px;align-items:center;min-height:32px}
+.doc details summary::-webkit-details-marker{display:none}
+.doc details summary::before{content:"▸";transition:transform .15s}
+.doc details[open] summary::before{transform:rotate(90deg)}
+.doc .box{display:flex;flex-direction:column;gap:12px;padding-top:10px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px 14px}
+.field label{display:flex;justify-content:space-between;gap:8px}
+.panel{padding:18px;display:flex;flex-direction:column;gap:12px}
+.facts{display:flex;flex-direction:column}
+.fact{display:grid;grid-template-columns:110px minmax(0,1fr);gap:10px;padding:9px 0;border-bottom:1px solid var(--line-soft);font-size:15px}
+.fact:last-child{border-bottom:0}
+.fact .k{color:var(--muted);font-size:14px}
+.fact .src{display:block;font-size:12.5px;color:var(--muted)}
+.fact .unk{color:var(--warn)}
+.q{padding:14px 0;border-top:1px solid var(--line-soft);display:flex;flex-direction:column;gap:8px}
+.q:first-of-type{border-top:0;padding-top:4px}
+.q p.t{font-weight:600}
+.q .row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
+.q .row .field{flex:1 1 120px}
+.miss{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.miss li{display:flex;flex-direction:column;gap:4px;padding:10px 12px;background:var(--sheet-2);border-radius:4px}
+.miss li .top{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.miss li span.w{font-size:13.5px;color:var(--muted)}
+#docList{display:flex;flex-direction:column;gap:10px}
+.empty-docs{padding:28px 20px;text-align:center;color:var(--muted)}
+details.adjust summary{cursor:pointer;font-weight:600;font-size:15px;min-height:36px;display:flex;align-items:center}
+details.adjust .box{display:flex;flex-direction:column;gap:12px;padding-top:8px}
 </style>
 </head>
 <body class="pending">
 <header class="top">
   <div class="page">
-    <a class="wordmark" href="upload.html" aria-label="taxflix Startseite">tax<b>flix</b></a>
+    <a class="wordmark" href="upload.html" aria-label="taxflix">tax<b>flix</b></a>
     <ol class="steps" aria-label="Schritte">
       <li><a href="upload.html" aria-current="page"><span class="n">1</span>Belege</a></li>
       <li><a href="ergebnis.html"><span class="n">2</span>Ergebnis</a></li>
@@ -66,52 +75,49 @@ details.person .in{padding:0 12px 12px;display:flex;flex-direction:column;gap:10
 
 <main class="page">
   <div class="intro">
-    <div class="left">
-      <span class="label" id="yearLabel">Steuererklärung 2025 · Kanton Zürich</span>
-      <h1>Ihre Belege</h1>
-      <p class="muted" style="max-width:38em">Wir zeigen Ihnen, welche Belege Sie für Ihre Situation brauchen. Laden Sie jeden Beleg beim passenden Eintrag hoch. Die Beträge werden ausgelesen oder Sie tragen sie direkt ein.</p>
-    </div>
-    <div class="progress">
-      <div style="display:flex;justify-content:space-between;gap:12px;align-items:baseline">
-        <span id="progText" style="font-weight:600"></span>
-        <a class="btn primary" href="ergebnis.html">Zum Ergebnis</a>
-      </div>
-      <div class="bar" aria-hidden="true"><span id="progBar" style="width:0"></span></div>
-    </div>
+    <span class="label">Steuererklärung Kanton Zürich</span>
+    <h1>Laden Sie einfach alle Belege hoch</h1>
+    <p class="muted">taxflix erkennt selbst, um welchen Beleg es sich handelt, wem er gehört und welche Beträge darauf stehen. Daraus ergeben sich Ihr Haushalt und Ihre Steuererklärung.</p>
   </div>
 
-  <div class="notice warn" id="autoNote" hidden style="margin-bottom:16px"></div>
-  <div class="notice" id="localNote" hidden style="margin-bottom:16px">Login ist noch nicht eingerichtet. Ihre Werte werden nur in diesem Browser gespeichert, hochgeladene Dateien nicht.</div>
+  <label class="drop" id="drop" for="file">
+    <strong>Belege hierher ziehen</strong>
+    <span class="sub">oder antippen, um Dateien auszuwählen · PDF, JPG, PNG · beliebig viele auf einmal</span>
+    <span class="btn primary fake">Dateien auswählen</span>
+    <input id="file" type="file" multiple accept="application/pdf,image/jpeg,image/png,image/webp" hidden>
+  </label>
+  <div class="typical" aria-label="Typische Belege">
+    <span>Lohnausweis</span><span>eSteuerauszug oder Bankauszüge</span><span>Krankenkasse</span><span>Säule 3a</span><span>Letzte Steuerrechnung</span><span>Kita</span><span>Hypothek</span><span>Spenden</span><span>Rente</span><span>ÖV-Abo</span>
+  </div>
+
+  <div class="notice warn" id="autoNote" hidden style="margin-top:20px"></div>
+  <div class="notice" id="localNote" hidden style="margin-top:12px">Login ist noch nicht eingerichtet. Ihre Angaben werden nur in diesem Browser gespeichert, hochgeladene Dateien nicht.</div>
 
   <div class="layout">
-    <aside class="card sit" aria-labelledby="sitTitle">
-      <section>
-        <h2 id="sitTitle">Ihre Situation</h2>
-        <div class="grid2">
-          <div class="field"><label for="year">Steuerperiode</label><select id="year"><option value="2025">2025</option><option value="2026">2026</option></select></div>
-          <div class="field"><label for="zivil">Zivilstand</label><select id="zivil"><option value="ledig">Alleinstehend</option><option value="verheiratet">Verheiratet</option></select></div>
-          <div class="field"><label for="kinder">Kinder</label><input id="kinder" type="number" min="0" step="1"></div>
-          <div class="field"><label for="kinderU14">davon unter 14</label><input id="kinderU14" type="number" min="0" step="1"></div>
-        </div>
-        <div class="grid2">
-          <div class="field" style="grid-column:1/-1"><label for="gemeinde">Wohngemeinde</label><select id="gemeinde"></select></div>
-          <div class="field"><label for="gfuss">Gemeindesteuerfuss %</label><input id="gfuss" type="number" min="0" step="1"></div>
-          <div class="field"><label for="kfuss">Kirchensteuerfuss %</label><input id="kfuss" type="number" min="0" step="0.5"></div>
-        </div>
-        <p class="note">Steuerfüsse: <a href="https://www.zh.ch/steuerfuesse" target="_blank" rel="noopener">zh.ch/steuerfuesse</a>. Ohne Kirche 0.</p>
-      </section>
-      <section>
-        <h3>Was trifft zu?</h3>
-        <div class="flags" id="flagsP"></div>
-        <div style="display:flex;flex-direction:column" id="flagsG"></div>
-      </section>
-      <section>
-        <h3>Arbeitsweg und Verpflegung</h3>
-        <div id="persons" style="display:flex;flex-direction:column;gap:10px"></div>
-      </section>
+    <aside class="side" aria-label="Erkannt aus Ihren Belegen">
+      <div class="card panel" id="qPanel" hidden>
+        <h2>Noch kurz beantworten</h2>
+        <div id="questions"></div>
+      </div>
+      <div class="card panel">
+        <h2>Erkannt aus Ihren Belegen</h2>
+        <div class="facts" id="facts"></div>
+        <details class="adjust" id="adjust">
+          <summary>Angaben anpassen</summary>
+          <div class="box" id="adjustBox"></div>
+        </details>
+      </div>
+      <div class="card panel" id="missPanel" hidden>
+        <h2>Fehlt vermutlich</h2>
+        <ul class="miss" id="missing"></ul>
+      </div>
+      <a class="btn primary" href="ergebnis.html" style="min-height:50px">Weiter zum Ergebnis</a>
     </aside>
 
-    <div class="list" id="list"></div>
+    <section class="docs" aria-labelledby="h-docs">
+      <div class="head2"><h2 id="h-docs">Ihre Belege</h2><span class="muted" id="docCount"></span></div>
+      <div id="docList"></div>
+    </section>
   </div>
 </main>
 
@@ -125,270 +131,258 @@ details.person .in{padding:0 12px 12px;display:flex;flex-direction:column;gap:10
 <script>
 "use strict";
 const $ = id => document.getElementById(id);
-const { KEYS, DOCTYPES, GEMEINDEN, nf } = TX;
-let S = null, USER = null;
-const FILES = new Map();
-const AUTO = { state: "unknown" };   // unknown | on | off
-const MAX_READ_BYTES = 3 * 1024 * 1024;
+const { KEYS, DOCTYPES, nf } = TX;
+let S=null, USER=null;
+const FILES=new Map(), QUEUE=[]; let busy=false;
+const AUTO={ state:"unknown" };
+const MAX_READ_BYTES=3*1024*1024;
 
 function el(tag, attrs, ...kids){ const e=document.createElement(tag); for(const [k,v] of Object.entries(attrs||{})){ if(v==null||v===false) continue; if(k==="class") e.className=v; else if(k==="text") e.textContent=v; else if(k.startsWith("on")) e.addEventListener(k.slice(2),v); else e.setAttribute(k, v===true?"":v); } for(const c of kids) if(c!=null) e.append(c); return e; }
 function toast(t){ const e=$("toast"); e.textContent=t; e.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>e.hidden=true,2400); }
-function onSave(st){ const e=$("save"); e.className="save"+(st==="error"?" bad":""); e.textContent = st==="saving"?"Wird gespeichert …":st==="saved"?"Gespeichert":st==="error"?"Nicht gespeichert, Verbindung prüfen":""; }
-function commit(){ TX.saveState(S, onSave); render(); }
+function onSave(st){ const e=$("save"); e.className="save"+(st==="error"?" bad":""); e.textContent=st==="saving"?"Wird gespeichert …":st==="saved"?"Gespeichert":st==="error"?"Nicht gespeichert, Verbindung prüfen":""; }
+const O = () => S.overrides;
+function commit(){ TX.rebuild(S); TX.saveState(S,onSave); render(); }
+const first = n => String(n||"").split(" ")[0];
 
-/* ---------- Situation ---------- */
-const PFLAGS = [["angestellt","Angestellt (Lohnausweis)"],["saeule3a","Säule 3a einbezahlt"],["pkEinkauf","Einkauf Pensionskasse"],["rente","Rente erhalten"],["taggeld","ALV, Taggelder, Mutterschaft"],["selbst","Selbständig erwerbend"],["weiterbildung","Weiterbildung bezahlt"]];
-const GFLAGS = [["kita","Kinder werden fremdbetreut (Kita, Hort)"],["liegenschaft","Eigene Liegenschaft"],["kredit","Kredite oder andere Schulden"],["spenden","Spenden ab CHF 100"],["krankheit","Hohe selbst bezahlte Arztkosten"],["unterhalt","Unterhaltsbeiträge (Alimente)"]];
+/* ---------- Upload ---------- */
+const drop=$("drop"), fileIn=$("file");
+["dragenter","dragover"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault(); drop.classList.add("over");}));
+["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault(); drop.classList.remove("over");}));
+drop.addEventListener("drop",e=>addFiles([...e.dataTransfer.files]));
+fileIn.addEventListener("change",()=>{ addFiles([...fileIn.files]); fileIn.value=""; });
 
-function renderSituation(){
-  $("year").value=String(S.year); $("zivil").value=S.zivil; $("kinder").value=S.kinder; $("kinderU14").value=S.kinderU14;
-  const g=$("gemeinde"); if(!g.options.length) for(const x of GEMEINDEN) g.append(el("option",{value:x.id,text:x.name+(x.fuss?` (${x.fuss} %)`:"")}));
-  g.value=S.gemeinde; $("gfuss").value=S.gfuss; $("kfuss").value=S.kfuss;
-  $("yearLabel").textContent=`Steuererklärung ${S.year} · Kanton Zürich`;
-  const np=TX.nPersons(S), fp=$("flagsP"); fp.replaceChildren();
-  fp.style.gridTemplateColumns = np===2 ? "minmax(0,1fr) 56px 56px" : "minmax(0,1fr) 40px";
-  fp.append(el("span"));
-  for(let p=0;p<np;p++) { const nm=TX.personName(S,p); fp.append(el("span",{class:"h",text: np===2 ? (/^Person \d$/.test(nm) ? "P"+(p+1) : nm.split(" ")[0].slice(0,8)) : ""})); }
-  for(const [k,label] of PFLAGS){
-    fp.append(el("span",{id:"lbl-"+k,text:label}));
-    for(let p=0;p<np;p++){ const i=el("input",{type:"checkbox",id:`f-${k}-${p}`,"aria-labelledby":"lbl-"+k, "aria-label": np===2?TX.personName(S,p):null}); i.checked=!!S.sit[k][p]; i.addEventListener("change",()=>{S.sit[k][p]=i.checked; commit();}); fp.append(i); }
-  }
-  const fg=$("flagsG"); fg.replaceChildren();
-  for(const [k,label] of GFLAGS){
-    if(k==="kita" && !(+S.kinderU14>0)) continue;
-    const i=el("input",{type:"checkbox",id:"g-"+k}); i.checked=!!S.sit[k]; i.addEventListener("change",()=>{S.sit[k]=i.checked; commit();});
-    fg.append(el("label",{class:"check",for:"g-"+k}, i, label));
-  }
-  const box=$("persons"); box.replaceChildren();
-  for(let p=0;p<np;p++){
-    const pe=S.persons[p], id=s=>`p${p}-${s}`;
-    const sel=(key,opts)=>{ const s=el("select",{id:id(key)}); for(const [v,t] of opts) s.append(el("option",{value:v,text:t})); s.value=String(pe[key]); s.addEventListener("change",()=>{pe[key]=s.value; commit();}); return s; };
-    const num=key=>{ const i=el("input",{id:id(key),type:"number",min:"0",step:"1",value:pe[key]}); i.addEventListener("change",()=>{pe[key]=+i.value||0; commit();}); return i; };
-    const chk=(key,label)=>{ const i=el("input",{id:id(key),type:"checkbox"}); i.checked=!!pe[key]; i.addEventListener("change",()=>{pe[key]=i.checked; commit();}); return el("label",{class:"check",for:id(key)},i,label); };
-    const name=el("input",{id:id("name"),type:"text",value:pe.name}); name.addEventListener("change",()=>{pe.name=name.value.trim()||("Person "+(p+1)); commit();});
-    const d=el("details",{class:"person"}); if(p===0 || np===1) d.open=true;
-    d.append(el("summary",{text:TX.personName(S,p)}), el("div",{class:"in"},
-      el("div",{class:"field"}, el("label",{for:id("name"),text:"Name"}), name),
-      el("div",{class:"grid2"},
-        el("div",{class:"field"}, el("label",{for:id("weg"),text:"Arbeitsweg"}), sel("weg",[["oev","ÖV"],["velo","Velo"],["auto","Auto"],["motorrad","Motorrad"],["keine","Keiner"]])),
-        el("div",{class:"field"}, el("label",{for:id("km"),text:"km einfach"}), num("km")),
-        el("div",{class:"field"}, el("label",{for:id("tage"),text:"Arbeitstage"}), num("tage")),
-        el("div",{class:"field"}, el("label",{for:id("verpflegung"),text:"Mittagessen"}), sel("verpflegung",[["voll","Auswärts"],["verbilligt","Kantine"],["keine","Zu Hause"]]))),
-      chk("pk","Pensionskasse vorhanden"), chk("geschaeftsauto","Geschäftsauto")));
-    box.append(d);
-  }
-}
-$("year").addEventListener("change",e=>{S.year=+e.target.value; commit();});
-$("zivil").addEventListener("change",e=>{S.zivil=e.target.value; commit();});
-$("kinder").addEventListener("change",e=>{S.kinder=Math.max(0,+e.target.value||0); if(S.kinderU14>S.kinder) S.kinderU14=S.kinder; commit();});
-$("kinderU14").addEventListener("change",e=>{S.kinderU14=TX.clamp(+e.target.value||0,0,S.kinder); commit();});
-$("gemeinde").addEventListener("change",e=>{S.gemeinde=e.target.value; const g=GEMEINDEN.find(x=>x.id===S.gemeinde); if(g&&g.fuss) S.gfuss=g.fuss; commit();});
-$("gfuss").addEventListener("change",e=>{S.gfuss=+e.target.value||0; S.gemeinde=(GEMEINDEN.find(x=>x.fuss===S.gfuss)||{id:"andere"}).id; commit();});
-$("kfuss").addEventListener("change",e=>{S.kfuss=+e.target.value||0; commit();});
-
-/* ---------- Belegliste ---------- */
-const STATUS = {
-  fehlt:{c:"bad",t:"Fehlt"}, hochgeladen:{c:"warn",t:"Werte prüfen"}, werte:{c:"ok",t:"Werte erfasst"}, fertig:{c:"ok",t:"Erledigt"}, na:{c:"mute",t:"Nicht vorhanden"}
-};
-const DOCSTATUS = {
-  speichern:{c:"run red",t:"Wird hochgeladen"}, lesen:{c:"run red",t:"Wird ausgelesen"}, fertig:{c:"ok",t:"Ausgelesen"},
-  gespeichert:{c:"mute",t:"Gespeichert"}, fehler:{c:"bad",t:"Fehler"}
-};
-function keyPerson(key, p){ return KEYS[key].p ? (p==="g"?0:p) : "g"; }
-
-function renderList(){
-  const list=$("list"); list.replaceChildren();
-  const cl=TX.checklist(S);
-  const needed=cl.filter(c=>c.needed && c.status!=="na");
-  const done=needed.filter(c=>c.status!=="fehlt").length;
-  $("progText").textContent = needed.length ? `${done} von ${needed.length} Belegen erledigt` : "Keine Belege nötig";
-  $("progBar").style.width = needed.length ? (done/needed.length*100).toFixed(0)+"%" : "100%";
-  const np=TX.nPersons(S);
-
-  list.append(el("div",{class:"group-title"}, el("h2",{text:"Benötigte Belege"}), el("span",{class:"muted",text:"Je nach Ihrer Situation"})));
-  for(const c of needed) list.append(docCard(c, np));
-  const optional=cl.filter(c=>c.optional);
-  list.append(el("div",{class:"group-title"}, el("h2",{text:"Falls vorhanden"})));
-  for(const c of optional) list.append(docCard(c, np));
-  const na=cl.filter(c=>c.status==="na" && c.needed);
-  if(na.length){
-    list.append(el("div",{class:"group-title"}, el("h2",{text:"Nicht vorhanden"})));
-    const box=el("div",{class:"na-list"});
-    for(const c of na) box.append(el("button",{class:"btn small",type:"button",text:"↺ "+c.type.name+(c.person!=="g"&&np===2?" · "+TX.personName(S,c.person):""), onclick:()=>{ delete S.na[c.slot]; commit(); }}));
-    list.append(box);
-  }
-  list.append(el("div",{class:"card next"}, el("span",{text: done<needed.length ? `Noch ${needed.length-done} Beleg${needed.length-done===1?"":"e"} offen. Sie können trotzdem schon das Ergebnis ansehen.` : "Alle benötigten Belege sind erfasst."}), el("a",{class:"btn primary",href:"ergebnis.html",text:"Weiter zum Ergebnis"})));
-}
-
-function docCard(c, np){
-  const t=c.type, p=c.person, st=STATUS[c.status];
-  const who = p!=="g" && np===2 ? " · "+TX.personName(S,p) : "";
-  const zs=[...new Set(t.keys.map(k=>KEYS[k].z))];
-  const inputId=`up-${t.id}-${p}`;
-  const fileInput=el("input",{type:"file",id:inputId,multiple:true,accept:"application/pdf,image/jpeg,image/png,image/webp",hidden:true});
-  fileInput.addEventListener("change",()=>{ addFiles(t,p,[...fileInput.files]); fileInput.value=""; });
-  const card=el("article",{class:"card doc"+(c.status==="fertig"||c.status==="werte"?" done":""),"aria-labelledby":"h-"+inputId});
-  ["dragenter","dragover"].forEach(ev=>card.addEventListener(ev,e=>{ if(e.dataTransfer && [...e.dataTransfer.types].includes("Files")){ e.preventDefault(); card.classList.add("over"); } }));
-  ["dragleave","drop"].forEach(ev=>card.addEventListener(ev,()=>card.classList.remove("over")));
-  card.addEventListener("drop",e=>{ e.preventDefault(); if(e.dataTransfer.files.length) addFiles(t,p,[...e.dataTransfer.files]); });
-
-  const head=el("div",{class:"head"},
-    el("div",{class:"title"}, el("h3",{id:"h-"+inputId,text:t.name+who}), el("div",{class:"chips"}, ...zs.map(z=>el("span",{class:"zchip",text:z==="WV"?"Wertschriftenverzeichnis":"Ziffer "+z})))),
-    c.optional ? null : el("span",{class:"pill "+st.c,text:st.t}));
-  const acts=el("div",{class:"acts"},
-    el("label",{class:"btn primary small",for:inputId,text:"Datei hochladen"}), fileInput,
-    c.optional ? null : el("button",{class:"btn ghost small",type:"button",text:"Habe ich nicht",onclick:()=>{ S.na[c.slot]=true; commit(); toast("Als nicht vorhanden markiert"); }}));
-  card.append(head, el("p",{class:"muted",text:t.why}), acts);
-
-  if(c.docs.length){
-    const ul=el("ul",{class:"files"});
-    for(const d of c.docs){
-      const ds=DOCSTATUS[d.status]||DOCSTATUS.gespeichert;
-      const li=el("li",{}, el("span",{class:"fn",text:d.name}), el("span",{class:"pill "+ds.c,text:ds.t}));
-      if(d.path && USER) li.append(el("button",{class:"btn small",type:"button",text:"Ansehen",onclick:()=>viewDoc(d)}));
-      if((d.status==="fehler"||d.status==="gespeichert") && AUTO.state==="on" && (FILES.has(d.id) || d.path)) li.append(el("button",{class:"btn small",type:"button",text:"Auslesen",onclick:()=>readDoc(d.id)}));
-      li.append(el("button",{class:"btn ghost small",type:"button","aria-label":"Datei entfernen: "+d.name,text:"Entfernen",onclick:()=>removeDoc(d.id)}));
-      const meta = d.status==="fertig" ? `${d.count||0} Werte erkannt${d.hint?" · "+d.hint:""}` : d.error ? d.error : d.status==="gespeichert" ? (d.hint||"Bitte Werte unten eintragen.") : "";
-      if(meta) li.append(el("span",{class:"fm",text:meta}));
-      ul.append(li);
-    }
-    card.append(ul);
-  }
-
-  const fields=el("div",{class:"fields"});
-  for(const k of t.keys){
-    const kp=keyPerson(k,p), v=TX.valueOf(S,k,kp), id=`v-${k}-${kp}`;
-    const auto=S.items.some(i=>i.key===k && i.person===kp && i.source==="dok");
-    const inp=el("input",{id,type:"number",min:"0",step:"1",inputmode:"decimal",value: v?Math.round(v*100)/100:"",placeholder:"0"});
-    inp.addEventListener("change",()=>{ TX.setValue(S,k,kp,Math.max(0,+inp.value||0),"manuell"); commit(); });
-    fields.append(el("div",{class:"field"}, el("label",{for:id}, el("span",{text:KEYS[k].l}), el("span",{class:"z",text:auto?"ausgelesen":(KEYS[k].z==="WV"?"":KEYS[k].z)})), inp));
-  }
-  card.append(fields);
-  return card;
-}
-
-/* ---------- Dateien ---------- */
-async function addFiles(type, person, files){
+async function addFiles(files){
   for(const f of files){
     if(!/^(application\/pdf|image\/(jpeg|png|webp))$/.test(f.type)){ toast(f.name+": nur PDF, JPG, PNG oder WebP"); continue; }
-    if(f.size > 20*1024*1024){ toast(f.name+": Datei ist grösser als 20 MB"); continue; }
-    const d={ id:TX.uid(), type:type.id, person, name:f.name, size:f.size, mediaType:f.type, status:"speichern", path:null };
-    delete S.na[type.id+":"+person];
+    if(f.size>20*1024*1024){ toast(f.name+": grösser als 20 MB"); continue; }
+    const d={ id:TX.uid(), name:f.name, size:f.size, mediaType:f.type, type:"sonstiges", status:"speichern", path:null, edits:{} };
     S.docs.push(d); FILES.set(d.id,f); render();
     if(USER && SP.client){
       try{
         const safe=f.name.normalize("NFKD").replace(/[^\w.\-]+/g,"_").slice(-80);
         const path=`${USER.id}/${d.id}-${safe}`;
-        const { error } = await SP.client.storage.from("belege").upload(path, f, { contentType:f.type, upsert:false });
-        if(error) throw error;
-        d.path=path;
-      }catch(e){ d.hint="Datei konnte nicht gespeichert werden (Speicher noch nicht eingerichtet?)."; }
+        const { error } = await SP.client.storage.from("belege").upload(path,f,{contentType:f.type,upsert:false});
+        if(error) throw error; d.path=path;
+      }catch(_){ d.hint="Datei konnte nicht gespeichert werden."; }
     }
     d.status="gespeichert";
-    TX.saveState(S,onSave); render();
-    if(AUTO.state==="on") await readDoc(d.id);
+    if(AUTO.state==="on") enqueue(d.id); else commit();
   }
 }
+function enqueue(id){ const d=S.docs.find(x=>x.id===id); if(!d) return; d.status="wartet"; if(!QUEUE.includes(id)) QUEUE.push(id); render(); pump(); }
+async function pump(){ if(busy) return; const id=QUEUE.shift(); if(!id) return; busy=true; try{ await readDoc(id); } finally { busy=false; commit(); pump(); } }
 
 async function fileForReading(d){
   let f=FILES.get(d.id);
-  if(!f && d.path && USER){
-    const { data, error } = await SP.client.storage.from("belege").download(d.path);
-    if(error) throw new Error("download");
-    f=new File([data], d.name, {type:d.mediaType||data.type}); FILES.set(d.id,f);
-  }
+  if(!f && d.path && USER){ const { data, error }=await SP.client.storage.from("belege").download(d.path); if(error) throw new Error("download"); f=new File([data],d.name,{type:d.mediaType||data.type}); FILES.set(d.id,f); }
   if(!f) throw new Error("missing");
   if(f.type.startsWith("image/")){
-    const img=await createImageBitmap(f);
-    const scale=Math.min(1, 2000/Math.max(img.width,img.height));
-    const c=document.createElement("canvas"); c.width=Math.round(img.width*scale); c.height=Math.round(img.height*scale);
-    const ctx=c.getContext("2d"); ctx.fillStyle="#fff"; ctx.fillRect(0,0,c.width,c.height); ctx.drawImage(img,0,0,c.width,c.height);
-    const blob=await new Promise(r=>c.toBlob(r,"image/jpeg",.85));
-    return { blob, mediaType:"image/jpeg" };
+    const img=await createImageBitmap(f), sc=Math.min(1,2000/Math.max(img.width,img.height));
+    const c=document.createElement("canvas"); c.width=Math.round(img.width*sc); c.height=Math.round(img.height*sc);
+    const x=c.getContext("2d"); x.fillStyle="#fff"; x.fillRect(0,0,c.width,c.height); x.drawImage(img,0,0,c.width,c.height);
+    return { blob: await new Promise(r=>c.toBlob(r,"image/jpeg",.85)), mediaType:"image/jpeg" };
   }
-  if(f.size > MAX_READ_BYTES) throw new Error("toolarge");
+  if(f.size>MAX_READ_BYTES) throw new Error("toolarge");
   return { blob:f, mediaType:"application/pdf" };
 }
-const toBase64 = blob => new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(",")[1]); r.onerror=rej; r.readAsDataURL(blob); });
+const toBase64=b=>new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(",")[1]); r.onerror=rej; r.readAsDataURL(b); });
 
 async function readDoc(id){
   const d=S.docs.find(x=>x.id===id); if(!d) return;
-  const type=DOCTYPES.find(t=>t.id===d.type);
   d.status="lesen"; d.error=null; render();
   try{
-    const { blob, mediaType } = await fileForReading(d);
-    const session = SP.client ? (await SP.client.auth.getSession()).data.session : null;
-    const res = await fetch("/api/auslesen", { method:"POST", headers:{ "Content-Type":"application/json", ...(session?{Authorization:"Bearer "+session.access_token}:{}) },
-      body: JSON.stringify({ doctype:type.id, keys:type.keys, year:S.year, filename:d.name, mediaType, data: await toBase64(blob) }) });
-    if(res.status===503 || res.status===404){ setAuto("off"); d.status="gespeichert"; d.hint="Automatisches Auslesen ist noch nicht eingerichtet. Bitte Werte unten eintragen."; return; }
+    const { blob, mediaType }=await fileForReading(d);
+    const session=SP.client ? (await SP.client.auth.getSession()).data.session : null;
+    const res=await fetch("/api/auslesen",{ method:"POST", headers:{"Content-Type":"application/json", ...(session?{Authorization:"Bearer "+session.access_token}:{})},
+      body:JSON.stringify({ typeHint: d.typeLocked ? d.type : "", year:S.year, mediaType, data: await toBase64(blob) }) });
+    if(res.status===503||res.status===404){ setAuto("off"); d.status="gespeichert"; return; }
     if(res.status===401){ d.status="fehler"; d.error="Bitte neu anmelden und erneut versuchen."; return; }
-    if(res.status===413){ d.status="gespeichert"; d.hint="Datei ist zu gross zum Auslesen. Bitte Werte unten eintragen."; return; }
-    if(!res.ok) throw new Error("http "+res.status);
-    const out = await res.json();
-    S.items = S.items.filter(i=>i.docId!==d.id);
-    let count=0;
-    for(const pos of (out.positionen||[])){
-      const k=String(pos.key||""); if(!type.keys.includes(k)) continue;
-      const amt=Math.abs(Number(pos.betrag)); if(!isFinite(amt)||!amt) continue;
-      S.items.push({ id:TX.uid(), key:k, person:keyPerson(k,d.person), amount:Math.round(amt*100)/100, source:"dok", docId:d.id, unsicher: pos.sicherheit==="tief" });
-      count++;
-    }
-    d.count=count; d.status="fertig";
-    d.hint=[out.jahr && String(out.jahr)!==String(S.year) ? `Beleg ist für ${out.jahr}` : "", ...(out.hinweise||[]).slice(0,1)].filter(Boolean).join(" · ").slice(0,180);
-    if(!count) d.hint="Keine Beträge gefunden. Bitte Werte unten eintragen.";
-    toast(`${d.name}: ${count} Werte erkannt`);
+    if(res.status===413){ d.status="fehler"; d.error="Datei zu gross zum Auslesen. Bitte Typ wählen und Werte eintragen."; return; }
+    if(!res.ok) throw new Error("http");
+    const out=await res.json();
+    d.result=out; d.type=out.dokumenttyp||d.type; d.status="fertig"; d.count=(out.positionen||[]).length;
+    d.hint=(out.jahr && out.jahr!==S.year && d.type!=="steuerrechnung" ? `Beleg ist für ${out.jahr}. ` : "") + ((out.hinweise||[])[0]||"");
+    toast(`${d.name}: ${TX.typeName(d.type)} erkannt`);
   }catch(e){
-    d.status = "fehler";
-    d.error = e.message==="toolarge" ? "PDF ist grösser als 3 MB und kann nicht ausgelesen werden. Bitte Werte unten eintragen." :
-      e.message==="missing" ? "Datei ist nicht mehr geladen. Bitte erneut hochladen." : "Auslesen fehlgeschlagen. Bitte erneut versuchen oder Werte eintragen.";
-  }finally{
-    TX.saveState(S,onSave); render();
+    d.status="fehler";
+    d.error=e.message==="toolarge" ? "PDF grösser als 3 MB. Bitte Typ wählen und Werte eintragen." : e.message==="missing" ? "Datei ist nicht mehr geladen. Bitte erneut hochladen." : "Auslesen fehlgeschlagen. Bitte erneut versuchen.";
   }
 }
-
 async function removeDoc(id){
   const d=S.docs.find(x=>x.id===id); if(!d) return;
-  if(d.path && USER){ try{ await SP.client.storage.from("belege").remove([d.path]); }catch(_){} }
-  S.docs=S.docs.filter(x=>x.id!==id); S.items=S.items.filter(i=>i.docId!==id); FILES.delete(id);
-  commit(); toast("Datei entfernt");
+  if(d.path&&USER){ try{ await SP.client.storage.from("belege").remove([d.path]); }catch(_){} }
+  S.docs=S.docs.filter(x=>x.id!==id); FILES.delete(id); commit(); toast("Beleg entfernt");
 }
 async function viewDoc(d){
   const w=window.open("","_blank");
-  const { data, error } = await SP.client.storage.from("belege").createSignedUrl(d.path, 120);
+  const { data, error }=await SP.client.storage.from("belege").createSignedUrl(d.path,120);
   if(error||!data){ if(w) w.close(); toast("Datei konnte nicht geöffnet werden"); return; }
   if(w) w.location=data.signedUrl; else location.href=data.signedUrl;
 }
-
 function setAuto(st){
-  AUTO.state=st;
-  const n=$("autoNote");
-  n.hidden = st!=="off";
-  n.textContent = "Automatisches Auslesen ist noch nicht eingerichtet. Ihre Dateien werden gespeichert, die Beträge tragen Sie bitte direkt beim Beleg ein.";
+  AUTO.state=st; const n=$("autoNote");
+  n.hidden=st!=="off";
+  n.textContent="Automatisches Auslesen ist noch nicht eingerichtet. Ihre Belege werden gespeichert. Wählen Sie bis dahin bei jedem Beleg den Typ und tragen Sie die Beträge ein, und ergänzen Sie unter «Angaben anpassen» Zivilstand, Kinder und Gemeinde.";
 }
 
-/* ---------- Darstellung ---------- */
+/* ---------- Belegliste ---------- */
+const DS={ speichern:["run red","Wird hochgeladen"], wartet:["run red","In Warteschlange"], lesen:["run red","Wird ausgelesen"], fertig:["ok","Ausgelesen"], gespeichert:["mute","Gespeichert"], fehler:["bad","Fehler"] };
+function renderDocs(){
+  const box=$("docList"); box.replaceChildren();
+  $("docCount").textContent = S.docs.length ? S.docs.length+" Beleg"+(S.docs.length>1?"e":"") : "";
+  if(!S.docs.length){ box.append(el("div",{class:"card empty-docs",text:"Noch keine Belege. Ziehen Sie alle Dateien auf einmal in das Feld oben."})); return; }
+  const np=TX.nPersons(S);
+  for(const d of S.docs){
+    const [pc,pt]=DS[d.status]||DS.gespeichert;
+    const owner = (TX.DOCTYPES.find(t=>t.id===d.type)||{}).perPerson || d.result && d.result.inhaber ? TX.personName(S, d.owner||0) : "";
+    const sub = d.status==="fertig" ? [TX.typeName(d.type), owner, d.count ? d.count+(d.count===1?" Wert":" Werte") : ""].filter(Boolean).join(" · ") :
+      d.error || (d.status==="gespeichert" && !d.result ? (d.type==="sonstiges" ? "Typ wählen und Werte eintragen" : TX.typeName(d.type)) : pt);
+    const row=el("div",{class:"row1"},
+      el("div",{class:"nm"}, el("b",{text:d.name}), el("span",{text:sub})),
+      el("span",{class:"pill "+pc,text:pt}),
+      el("div",{class:"btns"},
+        d.path&&USER ? el("button",{class:"btn small",type:"button",text:"Ansehen",onclick:()=>viewDoc(d)}) : null,
+        AUTO.state==="on" && (FILES.has(d.id)||d.path) && !["lesen","wartet","speichern"].includes(d.status) ? el("button",{class:"btn small",type:"button",text:d.result?"Neu lesen":"Auslesen",onclick:()=>enqueue(d.id)}) : null,
+        el("button",{class:"btn ghost small",type:"button","aria-label":"Beleg entfernen: "+d.name,text:"Entfernen",onclick:()=>removeDoc(d.id)})));
+    const card=el("article",{class:"card doc"}, row);
+    if(d.hint && d.status==="fertig") card.append(el("span",{class:"note",text:d.hint}));
+
+    // Details: Typ, Person, Werte
+    const det=el("details",{}); if(!d.result && d.status==="gespeichert" && AUTO.state==="off") det.open=true;
+    det.append(el("summary",{text: d.result ? "Werte ansehen und korrigieren" : "Typ und Werte"}));
+    const inner=el("div",{class:"box"});
+    const tsel=el("select",{id:"t-"+d.id}); for(const t of DOCTYPES) tsel.append(el("option",{value:t.id,text:t.name}));
+    tsel.value=d.type; tsel.addEventListener("change",()=>{ d.type=tsel.value; d.typeLocked=true; commit(); });
+    const top=el("div",{class:"grid2"}, el("div",{class:"field"}, el("label",{for:"t-"+d.id,text:"Belegtyp"}), tsel));
+    if(np===2){
+      const psel=el("select",{id:"o-"+d.id}); [0,1].forEach(i=>psel.append(el("option",{value:i,text:TX.personName(S,i)})));
+      psel.value=String(d.owner||0); psel.addEventListener("change",()=>{ d.personOverride=+psel.value; commit(); });
+      top.append(el("div",{class:"field"}, el("label",{for:"o-"+d.id,text:"Gehört zu"}), psel));
+    }
+    inner.append(top);
+    const type=DOCTYPES.find(t=>t.id===d.type)||{keys:[]};
+    const fromRes=((d.result&&d.result.positionen)||[]).map(p=>p.key);
+    const keys=[...new Set([...fromRes, ...type.keys, ...Object.keys(d.edits||{})])].filter(k=>KEYS[k]);
+    if(keys.length){
+      const g=el("div",{class:"grid2"});
+      for(const k of keys){
+        const auto=((d.result&&d.result.positionen)||[]).filter(p=>p.key===k).reduce((a,p)=>a+(+p.betrag||0),0);
+        const v=(d.edits&&d.edits[k]!=null)?d.edits[k]:auto;
+        const id=`e-${d.id}-${k}`;
+        const inp=el("input",{id,type:"number",min:"0",step:"1",inputmode:"decimal",value:v?Math.round(v*100)/100:"",placeholder:"0"});
+        inp.addEventListener("change",()=>{ d.edits=d.edits||{}; d.edits[k]=Math.max(0,+inp.value||0); commit(); });
+        const unsure=((d.result&&d.result.positionen)||[]).some(p=>p.key===k&&p.sicherheit==="tief") && !(d.edits&&d.edits[k]!=null);
+        g.append(el("div",{class:"field"}, el("label",{for:id}, el("span",{text:KEYS[k].l}), el("span",{class:unsure?"pill warn":"z",text:unsure?"prüfen":(KEYS[k].z==="WV"?"":KEYS[k].z)})), inp));
+      }
+      inner.append(g);
+    } else if(d.type==="steuerrechnung"){ inner.append(el("p",{class:"note",text:"Aus diesem Beleg werden nur Zivilstand, Gemeinde und Steuerfüsse übernommen."})); }
+    det.append(inner); card.append(det);
+    box.append(card);
+  }
+}
+
+/* ---------- Erkannt ---------- */
+function fact(k, v, src, unknown){ return el("div",{class:"fact"}, el("span",{class:"k",text:k}), el("span",{}, el("span",{class:unknown?"unk":null,text:v}), src?el("span",{class:"src",text:src}):null)); }
+function renderFacts(){
+  const D=S.derived||{}, f=$("facts"); f.replaceChildren();
+  f.append(fact("Steuerperiode", String(S.year), O().year?"Ihre Angabe":(S.docs.some(d=>d.result)?"aus den Belegen":"")));
+  const zKnown=!!(O().zivil||D.zivilAuto);
+  f.append(fact("Zivilstand", S.zivil==="verheiratet"?"Verheiratet":zKnown?"Alleinstehend":"Noch unklar", O().zivil?"Ihre Angabe":D.zivilSrc?"aus "+D.zivilSrc:"", !zKnown));
+  const ad=D.adults||[];
+  f.append(fact("Personen", ad.length ? ad.slice(0,TX.nPersons(S)).map(a=>a.name+(a.age!=null?` (${a.age})`:"")).join(", ") : "Noch keine erkannt", "", !ad.length));
+  const kids=D.kids||[];
+  f.append(fact("Kinder", S.kinder ? `${S.kinder}${kids.length?": "+kids.map(k=>first(k.name)+(k.age!=null?` (${k.age})`:"")).join(", "):""}` : "Keine", S.kinderU14?`davon ${S.kinderU14} bis 14 Jahre`:""));
+  f.append(fact("Gemeinde", (S.gemeindeName||"Noch unklar")+` · Steuerfuss ${S.gfuss} %`, D.gfussSrc?(D.gfussSrc==="Ihre Angabe"?D.gfussSrc:"aus "+D.gfussSrc):"bitte bestätigen", !D.gfussSrc));
+  f.append(fact("Kirche", S.kfuss?`Kirchensteuerfuss ${S.kfuss} %`:"Keine Kirchensteuer", D.kfussSrc?(D.kfussSrc==="Ihre Angabe"?D.kfussSrc:"aus "+D.kfussSrc):"bitte bestätigen", !D.kfussSrc));
+  if(D.separate) f.append(el("p",{class:"notice warn",text:`${D.separate} ist nicht mit Ihnen verheiratet. Diese Belege gehören in eine eigene Steuererklärung und werden hier nicht gerechnet.`}));
+  if(D.others && D.others.length) f.append(el("p",{class:"note",text:"Weitere Personen auf den Belegen: "+D.others.join(", ")}));
+  renderAdjust();
+}
+function renderAdjust(){
+  const b=$("adjustBox"); b.replaceChildren(); const o=O();
+  const sel=(id,label,opts,val,fn)=>{ const s=el("select",{id}); for(const [v,t] of opts) s.append(el("option",{value:v,text:t})); s.value=String(val); s.addEventListener("change",()=>fn(s.value)); return el("div",{class:"field"}, el("label",{for:id,text:label}), s); };
+  const num=(id,label,val,fn,step)=>{ const i=el("input",{id,type:"number",min:"0",step:step||"1",value:val}); i.addEventListener("change",()=>fn(+i.value||0)); return el("div",{class:"field"}, el("label",{for:id,text:label}), i); };
+  const txt=(id,label,val,fn)=>{ const i=el("input",{id,type:"text",value:val||""}); i.addEventListener("change",()=>fn(i.value.trim())); return el("div",{class:"field"}, el("label",{for:id,text:label}), i); };
+  b.append(el("div",{class:"grid2"},
+    sel("a-year","Steuerperiode",[["2025","2025"],["2026","2026"]],S.year,v=>{o.year=+v; commit();}),
+    sel("a-zivil","Zivilstand",[["ledig","Alleinstehend"],["verheiratet","Verheiratet"]],S.zivil,v=>{o.zivil=v; commit();}),
+    num("a-kinder","Kinder (Abzug)",S.kinder,v=>{o.kinder=v; commit();}),
+    num("a-u14","davon bis 14 Jahre",S.kinderU14,v=>{o.kinderU14=v; commit();}),
+    txt("a-gem","Gemeinde",S.gemeindeName,v=>{o.gemeindeName=v; commit();}),
+    num("a-gfuss","Gemeindesteuerfuss %",S.gfuss,v=>{o.gfuss=v; commit();}),
+    num("a-kfuss","Kirchensteuerfuss %",S.kfuss,v=>{o.kfuss=v; commit();},"0.5")));
+  for(let i=0;i<TX.nPersons(S);i++){
+    const p=S.persons[i], op=o.persons[i]=o.persons[i]||{};
+    b.append(el("h3",{text:p.name}), el("div",{class:"grid2"},
+      sel(`a-w${i}`,"Arbeitsweg",[["oev","ÖV"],["velo","Velo"],["auto","Auto"],["motorrad","Motorrad"],["keine","Zu Fuss / keiner"],["offen","Noch offen"]],p.weg,v=>{op.weg=v; commit();}),
+      num(`a-km${i}`,"km einfach",p.km,v=>{op.km=v; commit();}),
+      num(`a-t${i}`,"Arbeitstage",p.tage,v=>{op.tage=v; commit();}),
+      sel(`a-v${i}`,"Mittagessen",[["voll","Auswärts"],["verbilligt","Kantine"],["keine","Zu Hause"]],p.verpflegung,v=>{op.verpflegung=v; commit();}),
+      sel(`a-pk${i}`,"Pensionskasse",[["true","Ja"],["false","Nein"]],String(p.pk),v=>{op.pk=v==="true"; commit();})));
+  }
+  b.append(el("button",{class:"btn small",type:"button",text:"Auf erkannte Werte zurücksetzen",onclick:()=>{ S.overrides={persons:[{},{}],ausbildung:{}}; commit(); toast("Zurückgesetzt"); }}));
+}
+
+/* ---------- Fragen und fehlende Belege ---------- */
+function renderQuestions(){
+  const qs=(S.derived&&S.derived.questions)||[], box=$("questions"); box.replaceChildren();
+  $("qPanel").hidden=!qs.length;
+  for(const q of qs){
+    const w=el("div",{class:"q"}, el("p",{class:"t",text:q.text}), el("p",{class:"note",text:q.why}));
+    const row=el("div",{class:"row"}); const o=O();
+    if(q.id==="zivil"){
+      row.append(el("button",{class:"btn small",type:"button",text:"Ja, verheiratet",onclick:()=>{o.zivil="verheiratet"; commit();}}),
+                 el("button",{class:"btn small",type:"button",text:"Nein",onclick:()=>{o.zivil="ledig"; commit();}}));
+    } else if(q.id==="gfuss"){
+      const g=el("input",{id:"q-gem",type:"text",value:S.gemeindeName||"",placeholder:"z.B. Winterthur"}), f=el("input",{id:"q-fuss",type:"number",min:"0",step:"1",placeholder:"z.B. 122"});
+      row.append(el("div",{class:"field"}, el("label",{for:"q-gem",text:"Gemeinde"}), g), el("div",{class:"field"}, el("label",{for:"q-fuss",text:"Steuerfuss %"}), f),
+        el("button",{class:"btn small primary",type:"button",text:"Übernehmen",onclick:()=>{ if(!(+f.value)){ toast("Bitte Steuerfuss eintragen"); f.focus(); return; } o.gemeindeName=g.value.trim(); o.gfuss=+f.value; commit(); }}));
+      w.append(el("a",{href:"https://www.zh.ch/steuerfuesse",target:"_blank",rel:"noopener",class:"note",text:"Steuerfüsse aller Zürcher Gemeinden"}));
+    } else if(q.id==="kirche"){
+      const f=el("input",{id:"q-kf",type:"number",min:"0",step:"0.5",placeholder:"z.B. 10"});
+      row.append(el("button",{class:"btn small",type:"button",text:"Nein",onclick:()=>{o.kfuss=0; commit();}}),
+        el("div",{class:"field"}, el("label",{for:"q-kf",text:"Ja, Kirchensteuerfuss %"}), f),
+        el("button",{class:"btn small primary",type:"button",text:"Übernehmen",onclick:()=>{ if(!(+f.value)){ toast("Bitte Kirchensteuerfuss eintragen"); f.focus(); return; } o.kfuss=+f.value; commit(); }}));
+    } else if(q.id.startsWith("weg")){
+      const i=q.person, op=o.persons[i]=o.persons[i]||{};
+      const s=el("select",{id:"q-w"+i}); for(const [v,t] of [["oev","ÖV (Abo-Quittung hochladen)"],["velo","Velo / E-Bike"],["auto","Auto"],["motorrad","Motorrad"],["keine","Zu Fuss / Homeoffice"]]) s.append(el("option",{value:v,text:t}));
+      const km=el("input",{id:"q-km"+i,type:"number",min:"0",step:"1",placeholder:"km einfach"});
+      row.append(el("div",{class:"field"}, el("label",{for:"q-w"+i,text:"Arbeitsweg"}), s), el("div",{class:"field"}, el("label",{for:"q-km"+i,text:"km einfach (Auto, Motorrad)"}), km),
+        el("button",{class:"btn small primary",type:"button",text:"Übernehmen",onclick:()=>{ op.weg=s.value; op.km=+km.value||0; commit(); }}));
+    } else if(q.id.startsWith("ausb:")){
+      row.append(el("button",{class:"btn small",type:"button",text:"Ja",onclick:()=>{o.ausbildung[q.kid]=true; commit();}}),
+                 el("button",{class:"btn small",type:"button",text:"Nein",onclick:()=>{o.ausbildung[q.kid]=false; commit();}}));
+    }
+    w.append(row); box.append(w);
+  }
+}
+function renderMissing(){
+  const m=(S.derived&&S.derived.missing)||[], ul=$("missing"); ul.replaceChildren();
+  $("missPanel").hidden=!m.length || !S.docs.length;
+  for(const x of m) ul.append(el("li",{}, el("div",{class:"top"}, el("b",{text:x.name}), el("button",{class:"btn ghost small",type:"button",text:"Habe ich nicht",onclick:()=>{ S.na[x.id]=true; commit(); }})), el("span",{class:"w",text:x.why})));
+}
+
 function render(){
   const act=document.activeElement && document.activeElement.id;
-  renderSituation(); renderList();
-  if(act){ const e=document.getElementById(act); if(e) e.focus({preventScroll:true}); }
+  const openAdj=$("adjust").open;
+  const openDocs=new Set([...document.querySelectorAll("#docList details[open] select")].map(s=>s.id));
+  renderDocs(); renderFacts(); renderQuestions(); renderMissing();
+  $("adjust").open=openAdj;
+  for(const id of openDocs){ const e=document.getElementById(id); if(e) e.closest("details").open=true; }
+  if(act){ const e=document.getElementById(act); if(e){ const d=e.closest("details"); if(d) d.open=true; e.focus({preventScroll:true}); } }
 }
 
 (async function boot(){
   if(window.SP && SP.configured && !SP.client){ $("localNote").textContent="Die Anmeldung konnte nicht geladen werden. Bitte Seite neu laden."; $("localNote").hidden=false; }
-  const { state, user } = await TX.loadState();
-  S=state; USER=user;
-  if(USER){
-    $("who").textContent=USER.email||""; $("logout").hidden=false; $("logout").addEventListener("click",()=>SP.logout());
-    SP.client.auth.onAuthStateChange(ev=>{ if(ev==="SIGNED_OUT") location.replace("login.html"); });
-    onSave("saved");
-  } else if(!(window.SP && SP.configured)) { $("localNote").hidden=false; }
+  const { state, user }=await TX.loadState();
+  S=state; USER=user; S.overrides=S.overrides||{persons:[{},{}],ausbildung:{}};
+  if(USER){ $("who").textContent=USER.email||""; $("logout").hidden=false; $("logout").addEventListener("click",()=>SP.logout());
+    SP.client.auth.onAuthStateChange(ev=>{ if(ev==="SIGNED_OUT") location.replace("login.html"); }); onSave("saved"); }
+  else if(!(window.SP&&SP.configured)) $("localNote").hidden=false;
+  TX.rebuild(S);
   document.body.classList.remove("pending");
   render();
-  try{
-    const r=await fetch("/api/auslesen",{method:"GET"});
-    const j=r.ok ? await r.json() : null;
-    setAuto(j && j.configured ? "on" : "off");
-  }catch(_){ setAuto("off"); }
+  try{ const r=await fetch("/api/auslesen"); const j=r.ok?await r.json():null; setAuto(j&&j.configured?"on":"off"); }catch(_){ setAuto("off"); }
   render();
 })();
 </script>

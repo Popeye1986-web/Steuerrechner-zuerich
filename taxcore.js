@@ -106,6 +106,8 @@ window.TX = (function () {
       need: S => S.sit.krankheit },
     { id: "unterhalt", name: "Belege Unterhaltsbeiträge", why: "Bezahlte oder erhaltene Alimente.", keys: ["unterhalt_bezahlt", "unterhalt_erhalten"],
       need: S => S.sit.unterhalt },
+    { id: "steuerrechnung", name: "Letzte Steuerrechnung oder Veranlagung", why: "Zivilstand, Gemeinde, Steuerfuss und Konfession.", keys: [],
+      need: () => false, optional: true },
     { id: "sonstiges", name: "Weiteres Vermögen und weitere Einkünfte", why: "Bargeld, Fahrzeuge, Lebensversicherungen, Nebenerwerb. Nur ausfüllen, wenn vorhanden.", keys: ["nebenerwerb", "uebrige_einkuenfte", "bargeld", "fahrzeuge", "lebensversicherung", "uebriges_vermoegen"],
       need: () => false, optional: true }
   ];
@@ -120,7 +122,7 @@ window.TX = (function () {
       persons: [blankPerson(1), blankPerson(2)],
       sit: { angestellt: [true, true], selbst: pair(false), rente: pair(false), taggeld: pair(false), saeule3a: [true, true], pkEinkauf: pair(false),
         weiterbildung: pair(false), kita: true, liegenschaft: false, kredit: false, spenden: false, krankheit: false, unterhalt: false },
-      na: {}, docs: [], items: [] };
+      overrides: { persons: [{}, {}], ausbildung: {} }, na: {}, docs: [], items: [] };
   }
   function normalize(st) {
     if (!st || !st.persons) return null;
@@ -344,6 +346,154 @@ window.TX = (function () {
     return { y, Z, P, rows, ein, stE, stB, verm, T, grenz, versAkt, capS, vst: tot("verrechnungssteuer"), np, verh, kids };
   }
 
-  return { ZH, BUND, S3A_PK, GEMEINDEN, KEYS, DOCTYPES, emptyState, normalize, loadState, saveState, CLOUD,
+  /* ---------- Haushalt aus den Belegen ableiten ---------- */
+  const norm = v => String(v || "").toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[^a-z ]/g, " ").replace(/\s+/g, " ").trim();
+  const ageAt = (dob, year) => { const m = /^(\d{4})/.exec(dob || ""); return m ? year - +m[1] : null; };
+  const ADULT_TYPES = ["lohnausweis", "saeule3a", "rente", "pk_einkauf", "taggeld", "selbst", "weiterbildung", "oev"];
+  const typeName = id => (DOCTYPES.find(t => t.id === id) || { name: "Beleg" }).name;
+
+  function rebuild(S) {
+    const O = S.overrides = S.overrides || {};
+    O.persons = O.persons || [{}, {}];
+    O.ausbildung = O.ausbildung || {};
+    const docs = S.docs.filter(d => d.result);
+    // Steuerperiode: was die meisten Belege sagen, ausser die Person hat sie gewählt
+    if (O.year && ZH[O.year]) S.year = O.year;
+    else {
+      const ys = {}; for (const d of docs) { const j = +d.result.jahr; if (d.type !== "steuerrechnung" && ZH[j]) ys[j] = (ys[j] || 0) + 1; }
+      const best = Object.keys(ys).sort((a, b) => ys[b] - ys[a])[0];
+      if (best) S.year = +best;
+    }
+    const y = S.year;
+
+    // 1. Personen über alle Belege zusammenführen
+    const people = [];
+    const find = p => {
+      if (!p) return null;
+      const vn = norm(p.vorname).split(" ")[0] || "", nn = norm(p.nachname), dob = /^\d{4}-\d{2}-\d{2}$/.test(p.geburtsdatum || "") ? p.geburtsdatum : "";
+      if (!vn && !nn) return null;
+      let h = people.find(x => (dob && x.dob === dob && (!vn || !x.vn || x.vn === vn)) || (vn && x.vn === vn && (!nn || !x.nn || x.nn === nn) && (!dob || !x.dob || x.dob === dob)));
+      if (!h) { h = { key: "p" + people.length, vn, nn, vorname: p.vorname || "", nachname: p.nachname || "", dob, roles: new Set(), own: 0, ownTypes: new Set(), sources: new Set() }; people.push(h); }
+      if (dob && !h.dob) h.dob = dob;
+      if (p.vorname && !h.vorname) { h.vorname = p.vorname; h.vn = vn; }
+      if (p.nachname && !h.nachname) { h.nachname = p.nachname; h.nn = nn; }
+      return h;
+    };
+    for (const d of docs) {
+      const r = d.result; d._owner = null;
+      for (const p of (r.personen || [])) { const h = find(p); if (h) { if (p.rolle) h.roles.add(p.rolle); h.sources.add(d.name); } }
+      const h = find(r.inhaber);
+      if (h) { h.own++; h.ownTypes.add(d.type); h.sources.add(d.name); d._owner = h; }
+    }
+    const isKid = h => { const a = ageAt(h.dob, y); return h.roles.has("kind") ? (a == null || a < 26) : (a != null && a < 18); };
+    const kids = people.filter(isKid);
+    const adults = people.filter(h => !isKid(h) && (h.own > 0 || h.roles.has("steuerpflichtig") || h.roles.has("ehepartner") || [...h.ownTypes].some(t => ADULT_TYPES.includes(t))));
+    adults.sort((a, b) => (b.roles.has("steuerpflichtig") - a.roles.has("steuerpflichtig")) || (b.own - a.own));
+
+    // 2. Zivilstand
+    const zs = docs.map(d => d.result.zivilstand).filter(Boolean);
+    const zivSrc = docs.find(d => d.result.zivilstand === "verheiratet") || docs.find(d => (d.result.personen || []).some(p => p.rolle === "ehepartner"));
+    let zivilAuto = null;
+    if (zs.includes("verheiratet") || adults.some(h => h.roles.has("ehepartner"))) zivilAuto = "verheiratet";
+    else if (zs.length) zivilAuto = "ledig";
+    else if (adults.length < 2) zivilAuto = "ledig";
+    S.zivil = O.zivil || zivilAuto || "ledig";
+    const verh = S.zivil === "verheiratet";
+
+    // 3. Personen 1 und 2
+    const np = verh ? 2 : 1;
+    const lohnInfo = idx => { const d = docs.find(d => d.type === "lohnausweis" && d._owner && adults.indexOf(d._owner) === idx); return d ? (d.result.lohnausweis || {}) : null; };
+    for (let i = 0; i < 2; i++) {
+      const h = adults[i], o = O.persons[i] || {}, la = lohnInfo(i);
+      const hasAbo = S.docs.some(d => d.type === "oev" && ownerIdx(d) === i);
+      S.persons[i] = {
+        name: h ? [h.vorname, h.nachname].filter(Boolean).join(" ") || "Person " + (i + 1) : "Person " + (i + 1),
+        dob: h ? h.dob : "",
+        pk: o.pk != null ? o.pk : !(la && la.pk_beitraege === 0),
+        verpflegung: o.verpflegung || (la && la.kantine ? "verbilligt" : "voll"),
+        geschaeftsauto: o.geschaeftsauto != null ? o.geschaeftsauto : !!(la && la.geschaeftsauto),
+        weg: o.weg || (hasAbo ? "oev" : la ? (la.gratis_transport ? "keine" : "offen") : "keine"),
+        km: o.km || 0, tage: o.tage || 220, arbeitgeber: la && la.arbeitgeber ? String(la.arbeitgeber) : ""
+      };
+    }
+    function ownerIdx(d) {
+      if (d.personOverride === 0 || d.personOverride === 1) return d.personOverride;
+      const i = d._owner ? adults.indexOf(d._owner) : -1;
+      return i >= 0 ? i : 0;
+    }
+
+    // 4. Kinder
+    const kidList = kids.map(h => ({ key: h.key, name: [h.vorname, h.nachname].filter(Boolean).join(" ") || "Kind", age: ageAt(h.dob, y) }));
+    const kidsCount = kidList.filter(k => k.age == null || k.age < 18 || O.ausbildung[k.name]).length;
+    S.kinder = O.kinder != null ? O.kinder : kidsCount;
+    S.kinderU14 = O.kinderU14 != null ? O.kinderU14 : Math.min(S.kinder, kidList.filter(k => k.age != null && k.age <= 14).length);
+
+    // 5. Gemeinde, Steuerfuss, Kirche
+    const st = (docs.filter(d => d.type === "steuerrechnung").map(d => d.result.steuern).filter(Boolean))[0] || {};
+    const orte = {};
+    for (const d of docs) { const o = d.result.adresse && d.result.adresse.ort; if (o) orte[o] = (orte[o] || 0) + 1; }
+    const ortAuto = st.gemeinde || Object.keys(orte).sort((a, b) => orte[b] - orte[a])[0] || "";
+    S.gemeindeName = O.gemeindeName || ortAuto;
+    const gMatch = GEMEINDEN.find(g => g.fuss && norm(g.name).split(" ")[0] === norm(S.gemeindeName).split(" ")[0]);
+    let gfussSrc = null;
+    if (O.gfuss != null) { S.gfuss = O.gfuss; gfussSrc = "Ihre Angabe"; }
+    else if (st.steuerfuss_gemeinde) { S.gfuss = +st.steuerfuss_gemeinde; gfussSrc = "Steuerrechnung"; }
+    else if (gMatch) { S.gfuss = gMatch.fuss; gfussSrc = "Gemeinde " + gMatch.name; }
+    else { S.gfuss = S.gfuss || 119; gfussSrc = null; }
+    let kfussSrc = null;
+    if (O.kfuss != null) { S.kfuss = O.kfuss; kfussSrc = "Ihre Angabe"; }
+    else if (st.steuerfuss_kirche != null && st.steuerfuss_kirche !== "") { S.kfuss = +st.steuerfuss_kirche || 0; kfussSrc = "Steuerrechnung"; }
+    else if (st.konfession === "keine") { S.kfuss = 0; kfussSrc = "Steuerrechnung"; }
+    else { S.kfuss = 0; }
+
+    // 6. Situation für die Belegliste
+    const has = (type, i) => S.docs.some(d => d.type === type && (i === undefined || ownerIdx(d) === i));
+    for (let i = 0; i < 2; i++) {
+      S.sit.angestellt[i] = has("lohnausweis", i); S.sit.saeule3a[i] = has("saeule3a", i); S.sit.pkEinkauf[i] = has("pk_einkauf", i);
+      S.sit.rente[i] = has("rente", i); S.sit.taggeld[i] = has("taggeld", i); S.sit.selbst[i] = has("selbst", i); S.sit.weiterbildung[i] = has("weiterbildung", i);
+    }
+    S.sit.kita = has("kita"); S.sit.liegenschaft = has("liegenschaft"); S.sit.kredit = has("hypothek"); S.sit.spenden = has("spenden");
+    S.sit.krankheit = has("krankheit"); S.sit.unterhalt = has("unterhalt");
+
+    // 7. Werte aus den Belegen neu aufbauen (Korrekturen pro Beleg gehen vor)
+    S.items = [];
+    for (const d of S.docs) {
+      const vals = {};
+      for (const p of ((d.result && d.result.positionen) || [])) { if (KEYS[p.key]) vals[p.key] = (vals[p.key] || 0) + (+p.betrag || 0); }
+      for (const [k, v] of Object.entries(d.edits || {})) { if (KEYS[k]) vals[k] = +v || 0; }
+      const i = ownerIdx(d);
+      for (const [k, v] of Object.entries(vals)) if (v) S.items.push({ id: d.id + "-" + k, key: k, person: KEYS[k].p ? i : "g", amount: v, source: "dok", docId: d.id });
+      d.owner = i;
+      const t = DOCTYPES.find(t => t.id === d.type);
+      d.person = t && t.perPerson ? i : "g";
+    }
+
+    // 8. Offene Fragen und fehlende Belege
+    const q = [];
+    if (!O.zivil && !zivilAuto) q.push({ id: "zivil", text: `Sind ${adults[0] ? adults[0].vorname : "Sie"} und ${adults[1] ? adults[1].vorname : "die zweite Person"} verheiratet?`, why: "Unverheiratete Paare machen je eine eigene Steuererklärung." });
+    if (!gfussSrc) q.push({ id: "gfuss", text: S.gemeindeName ? `Wie hoch ist der Steuerfuss von ${S.gemeindeName}?` : "In welcher Gemeinde wohnen Sie, und wie hoch ist der Steuerfuss?", why: "Steht auf Ihrer letzten Steuerrechnung oder unter zh.ch/steuerfuesse." });
+    if (!kfussSrc) q.push({ id: "kirche", text: "Sind Sie Mitglied einer Landeskirche?", why: "Für die Kirchensteuer. Steht auf der letzten Steuerrechnung." });
+    for (let i = 0; i < np; i++) if (S.persons[i].weg === "offen") q.push({ id: "weg" + i, person: i, text: `Wie kommt ${S.persons[i].name.split(" ")[0]} zur Arbeit?`, why: "Für den Fahrkostenabzug. Mit ÖV-Abo einfach die Quittung hochladen." });
+    for (const k of kidList) if (k.age != null && k.age >= 18 && k.age < 26 && O.ausbildung[k.name] == null) q.push({ id: "ausb:" + k.name, kid: k.name, text: `Ist ${k.name.split(" ")[0]} (${k.age}) noch in Ausbildung?`, why: "Dann gibt es den Kinderabzug weiterhin." });
+
+    const miss = [];
+    const want = (id, name, why) => { if (!S.na[id]) miss.push({ id, name, why }); };
+    for (let i = 0; i < np; i++) if (!has("lohnausweis", i) && !has("rente", i) && !has("selbst", i) && !has("taggeld", i)) want("lohn" + i, "Lohnausweis " + S.persons[i].name, "Falls angestellt. Ohne Einkommensbeleg fehlt Ziffer 1.1.");
+    if (!has("bank")) want("bank", "Bank- und Depotauszüge oder eSteuerauszug", "Für Vermögen (Ziffer 30.1) und Erträge (Ziffer 4.1).");
+    if (!has("krankenkasse")) want("krankenkasse", "Prämienbescheinigung Krankenkasse", "Für den Versicherungsabzug (Ziffer 15).");
+    for (let i = 0; i < np; i++) if (has("lohnausweis", i) && !has("saeule3a", i)) want("3a" + i, "Säule 3a " + S.persons[i].name, "Falls einbezahlt. Bis CHF " + nf.format(S3A_PK) + " abzugsfähig (Ziffer 14).");
+    if (S.kinderU14 > 0 && !has("kita")) want("kita", "Rechnungen Kita, Hort, Tagesfamilie", "Falls Kinder fremdbetreut werden (Ziffer 16.6).");
+    if (!has("steuerrechnung") && (!gfussSrc || !kfussSrc || (!zivilAuto && !O.zivil))) want("steuerrechnung", "Letzte Steuerrechnung oder Veranlagung", "Daraus lesen wir Zivilstand, Gemeinde und Steuerfüsse.");
+
+    S.derived = {
+      adults: adults.slice(0, 2).map((h, i) => ({ idx: i, name: S.persons[i].name, dob: h.dob, age: ageAt(h.dob, y), sources: [...h.sources] })),
+      others: adults.slice(2).map(h => [h.vorname, h.nachname].filter(Boolean).join(" ")),
+      kids: kidList, zivilAuto, zivilSrc: zivSrc ? zivSrc.name : null, gfussSrc, kfussSrc,
+      questions: q, missing: miss, separate: !verh && adults.length >= 2 ? S.persons[1].name : null
+    };
+    return S;
+  }
+
+  return { typeName, rebuild, ZH, BUND, S3A_PK, GEMEINDEN, KEYS, DOCTYPES, emptyState, normalize, loadState, saveState, CLOUD,
     nf, nf2, chf, clamp, married, nPersons, personName, valueOf, setValue, checklist, calc, taxes, uid };
 })();

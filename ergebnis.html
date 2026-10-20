@@ -272,7 +272,7 @@ $("print").addEventListener("click",()=>window.print());
 
 (async function boot(){
   const { state, user } = await TX.loadState();
-  S=state;
+  S=state; TX.rebuild(S);
   if(user){ $("who").textContent=user.email||""; $("logout").hidden=false; $("logout").addEventListener("click",()=>SP.logout());
     SP.client.auth.onAuthStateChange(ev=>{ if(ev==="SIGNED_OUT") location.replace("login.html"); }); }
   document.body.classList.remove("pending");
