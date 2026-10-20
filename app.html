@@ -6,36 +6,32 @@
 <style>:root{color-scheme:light}body{margin:0;font-size:14px}img{max-width:100%}[hidden]{display:none!important}body.auth-pending .wrap{visibility:hidden}</style>
 </head>
 <body class="auth-pending">
-<title>Rechner · Steuerpilot Zürich</title>
+<title>Rechner · taxflix</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=Source+Sans+3:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 /* Layout: Formular-Logik der Zürcher Steuererklärung. Links die Arbeitsfläche (Angaben, Belege, Ziffern), rechts ein festes Steuerblatt mit dem Resultat. */
 :root{
-  --paper:#f5f7f9; --sheet:#ffffff; --ink:#14212e; --muted:#5a6876; --line:#d6dde4; --line-soft:#e7ecf0;
-  --zh:#0b4f8a; --zh-soft:#e3edf6; --zh-ink:#ffffff;
-  --ok:#1f7a4d; --ok-soft:#e1f2e9; --warn:#9a5b00; --warn-soft:#fbefd9; --bad:#b3261e; --bad-soft:#fae3e1;
-  --f-display:"Familjen Grotesk","Helvetica Neue",Arial,sans-serif;
-  --f-body:"Source Sans 3","Segoe UI",system-ui,sans-serif;
-  --f-num:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  /* taxflix: dunkle Kino-Optik, ein kräftiges Rot als einziger Akzent */
+  --paper:#141414; --sheet:#1e1e1e; --ink:#f3f3f3; --muted:#a8a8a8; --line:#353535; --line-soft:#282828;
+  --red:#e11d2a; --zh:#ff4d57; --zh-soft:#3a1517; --zh-ink:#ffffff;
+  --ok:#46d369; --ok-soft:#163220; --warn:#f5b041; --warn-soft:#3a2b12; --bad:#ff7b7b; --bad-soft:#3d1a1a;
+  --f-display:"Archivo Black","Arial Black",Impact,sans-serif;
+  --f-body:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,Menlo,monospace;
   --r:6px;
+  color-scheme:dark;
 }
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --paper:#0f161d; --sheet:#16202a; --ink:#e4ebf1; --muted:#97a6b4; --line:#2c3a47; --line-soft:#223040;
-  --zh:#6fb0ea; --zh-soft:#1b3550; --zh-ink:#0b1622;
-  --ok:#5fcf97; --ok-soft:#143326; --warn:#f0b24f; --warn-soft:#3a2a10; --bad:#ff8a80; --bad-soft:#3d1a18; color-scheme:dark}}
-:root[data-theme="dark"]{
-  --paper:#0f161d; --sheet:#16202a; --ink:#e4ebf1; --muted:#97a6b4; --line:#2c3a47; --line-soft:#223040;
-  --zh:#6fb0ea; --zh-soft:#1b3550; --zh-ink:#0b1622;
-  --ok:#5fcf97; --ok-soft:#143326; --warn:#f0b24f; --warn-soft:#3a2a10; --bad:#ff8a80; --bad-soft:#3d1a18; color-scheme:dark}
 *{box-sizing:border-box}
-body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;
+body{background:radial-gradient(1200px 500px at 15% -10%,#3a0d10 0%,rgba(20,20,20,0) 60%) var(--paper) no-repeat;color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
 .wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
 h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.15}
-h1{font-size:1.9rem;font-weight:700;letter-spacing:-.01em}
-h2{font-size:1.2rem;font-weight:600}
+h1{font-size:1.9rem;font-weight:400;letter-spacing:-.01em}
+.wordmark{font-family:var(--f-display);font-size:2.2rem;letter-spacing:-.04em;line-height:1;text-transform:lowercase}
+.wordmark b{color:var(--red);font-weight:400}
+h2{font-size:1.15rem;font-weight:400;letter-spacing:.01em}
 h3{font-size:.95rem;font-weight:600}
 p{margin:0}
 .num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
@@ -45,7 +41,7 @@ a{color:var(--zh)}
 button,select,input{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--zh);outline-offset:2px}
 
-header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;border-bottom:2px solid var(--ink);padding-bottom:14px}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:16px}
 .brand{display:flex;gap:14px;align-items:center}
 .mark{width:38px;height:38px;border-radius:4px;background:var(--zh);color:var(--zh-ink);display:grid;place-items:center;font-family:var(--f-display);font-weight:700;font-size:1rem;flex:none}
 .brand p{color:var(--muted);font-size:.92rem}
@@ -80,7 +76,8 @@ input[type=number]{font-family:var(--f-num);font-variant-numeric:tabular-nums}
 
 .btn{border:1px solid var(--line);background:var(--sheet);border-radius:4px;padding:7px 12px;cursor:pointer;font-weight:600;font-size:.9rem;display:inline-flex;gap:6px;align-items:center}
 .btn:hover{border-color:var(--zh)}
-.btn.primary{background:var(--zh);border-color:var(--zh);color:var(--zh-ink)}
+.btn.primary{background:var(--red);border-color:var(--red);color:var(--zh-ink)}
+.btn.primary:hover{background:#c41623;border-color:#c41623}
 .btn.ghost{border-color:transparent;background:transparent;color:var(--muted);padding:4px 8px}
 .btn.ghost:hover{color:var(--bad)}
 .btn:disabled{opacity:.5;cursor:default}
@@ -148,9 +145,8 @@ footer{font-size:.82rem;color:var(--muted);border-top:1px solid var(--line);padd
 <div class="wrap">
   <header class="top">
     <div class="brand">
-      <div class="mark" aria-hidden="true">ZH</div>
       <div>
-        <h1>Steuerpilot Zürich</h1>
+        <h1 class="wordmark">tax<b>flix</b></h1>
         <p>Belege hochladen, Werte automatisch auslesen, Steuer schätzen und für ZHprivateTax vorbereiten.</p>
       </div>
     </div>
@@ -593,7 +589,7 @@ function renderItems(){
   const ap = $("addPerson"); const cur = ap.value; ap.replaceChildren(); for(let p=0;p<np;p++) ap.append(el("option",{value:p, text:personLabel(p)})); if(married()) ap.append(el("option",{value:"g", text:"Gemeinsam"})); if([...ap.options].some(o=>o.value===cur)) ap.value=cur;
 }
 
-const COLORS = ["var(--zh)","#5b8fc7","#9bbbe0","#c9a24a","#7a6aa8"];
+const COLORS = ["var(--red)","#f3f3f3","#8c8c8c","#f5b041","#5a5a5a"];
 function renderResult(){
   const R = calc();
   $("resYear").textContent = R.y;
@@ -694,8 +690,8 @@ async function offer(name, text, type){
   if(DL){ try{ await DL.save({filename:name, data:new Blob([text],{type})}); return; }catch(e){ if(e && (e.code==="cancelled"||e.code==="declined")) return; } }
   try{ await navigator.clipboard.writeText(text); toast("Download nicht verfügbar. Inhalt in die Zwischenablage kopiert"); }catch(_){ toast("Export hier nicht verfügbar"); }
 }
-$("exCsv").addEventListener("click", ()=>offer(`steuerpilot-zh-${S.year}.csv`, buildCsv(), "text/csv"));
-$("exJson").addEventListener("click", ()=>offer(`steuerpilot-zh-${S.year}.json`, buildJson(), "application/json"));
+$("exCsv").addEventListener("click", ()=>offer(`taxflix-${S.year}.csv`, buildCsv(), "text/csv"));
+$("exJson").addEventListener("click", ()=>offer(`taxflix-${S.year}.json`, buildJson(), "application/json"));
 
 /* ---------- Upload und Auslesen ---------- */
 const AI = {state:"wait", sample:null, maxImages:5};

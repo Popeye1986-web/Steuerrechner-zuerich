@@ -1,4 +1,4 @@
-# Steuerpilot Zürich
+# taxflix
 
 Steuerrechner für den Kanton Zürich mit Login: Belege erfassen, Positionen nach den Ziffern der Zürcher Steuererklärung ordnen, Staats-, Gemeinde- und Bundessteuer schätzen und die Werte für ZHprivateTax vorbereiten. Die Daten jeder Person werden in ihrem eigenen Konto gespeichert.
 
