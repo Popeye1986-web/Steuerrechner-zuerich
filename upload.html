@@ -58,9 +58,53 @@ body.pending main{visibility:hidden}
 .casebar select{width:auto}
 body.locked .drop,body.locked .typical{display:none}
 .empty-docs{padding:28px 20px;text-align:center;color:var(--muted)}
-.trust{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px 22px;font-size:15px;color:var(--info)}
-.trust li{display:flex;gap:8px;align-items:center}
-.trust svg{flex:none;color:var(--ok)}
+/* Startseite: Titelbereich wie auf der Login-Seite, darunter der Upload */
+.hero{background:linear-gradient(170deg,#0b1f38 0%,#13304f 100%);color:#fff;overflow:hidden}
+.hero .page{display:grid;grid-template-columns:minmax(0,6fr) minmax(0,5fr);gap:56px;align-items:center;padding-block:72px 84px}
+.hero h1{color:#fff;font-size:clamp(34px,4.6vw,52px);line-height:1.06;letter-spacing:-.03em;max-width:13em}
+.hero .lead{color:#c3d0e0;font-size:18px;max-width:34em;margin-top:18px}
+.hero-trust{list-style:none;margin:26px 0 0;padding:0;display:flex;flex-direction:column;gap:10px;font-size:16px;color:#dbe4ef}
+.hero-trust li{display:flex;gap:10px;align-items:flex-start}
+.hero-trust li::before{content:"";width:18px;height:18px;flex:none;margin-top:3px;background:#9fc2ea;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1.5 3.5 4.8v6.4c0 5.3 3.6 9.9 8.5 11.3 4.9-1.4 8.5-6 8.5-11.3V4.8L12 1.5Zm-1.3 14.6-3.9-3.9 1.5-1.5 2.4 2.4 5.2-5.2 1.5 1.5-6.7 6.7Z'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1.5 3.5 4.8v6.4c0 5.3 3.6 9.9 8.5 11.3 4.9-1.4 8.5-6 8.5-11.3V4.8L12 1.5Zm-1.3 14.6-3.9-3.9 1.5-1.5 2.4 2.4 5.2-5.2 1.5 1.5-6.7 6.7Z'/%3E%3C/svg%3E") center/contain no-repeat}
+.hero-cta{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center;margin-top:32px}
+.hero-cta .btn.primary{background:#fff;border-color:#fff;color:#0b1f38;min-height:54px;padding:0 24px;font-size:17px}
+.hero-cta .btn.primary:hover{background:#e9f0f8;border-color:#e9f0f8;color:#0b1f38}
+.hero-cta .muted{color:#a9b8cc;font-size:14px}
+.sheet{position:relative;margin:0 22px 0 0;background:#fff;color:#0e1a2b;border-radius:8px;padding:20px 22px 22px;max-width:440px;justify-self:end;width:100%;
+  box-shadow:0 24px 48px rgba(0,0,0,.28),0 2px 6px rgba(0,0,0,.18);transform:rotate(-1.2deg)}
+.sh-head{display:flex;align-items:flex-end;gap:12px;padding-bottom:12px;padding-right:56px;border-bottom:2px solid #0e1a2b}
+.sh-head>div{display:flex;flex-direction:column;gap:2px}
+.sh-head .sh-form{margin-left:auto}
+.sh-title{font-weight:700;font-size:17px;letter-spacing:-.01em}
+.sh-sub{font-size:12px;color:#5b6778}
+.sh-form{font-family:var(--f-num);font-size:11px;color:#5b6778;border:1px solid #d9e0e8;border-radius:4px;padding:2px 6px;white-space:nowrap}
+.sh-band{margin:12px -22px 4px;padding:5px 22px;background:#0b1f38;color:#fff;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+.sh-row{display:grid;grid-template-columns:38px 40px minmax(0,1fr) 92px;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #e8edf2;font-size:13.5px}
+.sh-row .zz{font-family:var(--f-num);font-size:12px;color:#14406e;font-weight:500}
+.sh-row .c{font-family:var(--f-num);font-size:11px;color:#5b6778;background:#f1f4f8;border:1px solid #e1e7ee;border-radius:3px;text-align:center;padding:1px 0}
+.sh-row .l{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sh-row .v{font-variant-numeric:tabular-nums;text-align:right;border:1px solid #d9e0e8;border-radius:4px;padding:3px 8px;background:#fbfcfd;font-weight:500}
+.sh-total{border-bottom:0;margin-top:4px}
+.sh-total .l{font-weight:700}
+.sh-total .v{border-color:#14406e;background:#e9f0f8;color:#14406e;font-weight:700}
+.sh-seal{position:absolute;right:-22px;top:-30px;width:86px;height:86px;border-radius:50%;background:#14406e;color:#fff;display:grid;place-items:center;transform:rotate(10deg);
+  box-shadow:0 8px 20px rgba(0,0,0,.3),inset 0 0 0 3px #14406e,inset 0 0 0 5px rgba(255,255,255,.55)}
+.sh-seal span{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.sh-seal span::before{content:"";width:24px;height:24px;background:#fff;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1.5 3.5 4.8v6.4c0 5.3 3.6 9.9 8.5 11.3 4.9-1.4 8.5-6 8.5-11.3V4.8L12 1.5Zm-1.3 14.6-3.9-3.9 1.5-1.5 2.4 2.4 5.2-5.2 1.5 1.5-6.7 6.7Z'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1.5 3.5 4.8v6.4c0 5.3 3.6 9.9 8.5 11.3 4.9-1.4 8.5-6 8.5-11.3V4.8L12 1.5Zm-1.3 14.6-3.9-3.9 1.5-1.5 2.4 2.4 5.2-5.2 1.5 1.5-6.7 6.7Z'/%3E%3C/svg%3E") center/contain no-repeat}
+.sheet figcaption{position:absolute;left:22px;bottom:-24px;font-size:12px;color:#a9b8cc;transform:rotate(1.2deg)}
+.howto{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:40px}
+.howto div{display:flex;gap:12px;align-items:flex-start;font-size:15px;color:var(--muted)}
+.howto b{display:block;color:var(--ink);font-size:16px}
+.howto .n{flex:none;width:30px;height:30px;border-radius:50%;background:var(--red-soft);color:var(--red);display:grid;place-items:center;font-weight:700;font-size:14px}
+@media (max-width:900px){
+  .hero .page{grid-template-columns:minmax(0,1fr);gap:48px;padding-block:44px 64px}
+  .sheet{justify-self:start;max-width:400px;margin:24px 22px 0 0}
+  .howto{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:420px){.sheet{width:calc(100% - 16px)}.sh-row{grid-template-columns:32px 36px minmax(0,1fr) 76px;font-size:12.5px}.sh-seal{width:70px;height:70px;right:-14px;top:-26px}}
+@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+.login-link{font-size:14px;color:var(--muted);text-decoration:none}
+.login-link:hover{color:var(--ink)}
 .yearpick{display:flex;align-items:center;gap:10px;font-size:15px;color:var(--muted)}
 .yearpick select{width:auto;min-height:38px;padding:6px 10px}
 body.fresh .layout{display:none}
@@ -77,22 +121,59 @@ details.adjust .box{display:flex;flex-direction:column;gap:12px;padding-top:8px}
       <span class="save" id="save" role="status"></span>
       <span id="who"></span>
       <button class="btn small" id="logout" type="button" hidden>Abmelden</button>
+      <a class="login-link" id="loginLink" href="login.html" hidden>Login für Fachpersonen</a>
     </div>
   </div>
 </header>
 
+<section class="hero" id="hero" hidden aria-labelledby="heroTitle">
+  <div class="page">
+    <div>
+      <span class="label" style="color:#9fc2ea">Steuererklärung Kanton Zürich</span>
+      <h1 id="heroTitle" style="margin-top:14px">Belege hochladen, bezahlen, fertig.</h1>
+      <p class="lead">taxflix liest Ihre Belege automatisch, füllt die Steuererklärung mit allen Ziffern und Codes aus, und eine Fachperson prüft alles.</p>
+      <ul class="hero-trust">
+        <li>Kein Konto nötig, Ihre Belege sieht nur Ihre Fachperson</li>
+        <li>Belege werden automatisch gelesen und geordnet</li>
+        <li>Ausgefülltes Formular als PDF per E-Mail</li>
+        <li>Bezahlung erst am Schluss, sicher über Stripe, auch mit TWINT</li>
+      </ul>
+      <div class="hero-cta">
+        <a class="btn primary" href="#upload">Jetzt Belege hochladen ↓</a>
+        <span class="muted">Dauert nur wenige Minuten</span>
+      </div>
+    </div>
+    <figure class="sheet" aria-label="Beispiel: Auszug aus einer Steuererklärung des Kantons Zürich">
+      <div class="sh-head">
+        <div><span class="sh-title">Steuererklärung 2025</span><span class="sh-sub">Kanton Zürich · Natürliche Personen</span></div>
+        <span class="sh-form">Form. 303</span>
+      </div>
+      <div class="sh-band">Seite 2 · Einkünfte</div>
+      <div class="sh-row"><span class="zz">1.1</span><span class="c">100</span><span class="l">Haupterwerb</span><span class="v">92 400</span></div>
+      <div class="sh-row"><span class="zz">4.1</span><span class="c">150</span><span class="l">Wertschriftenertrag</span><span class="v">420</span></div>
+      <div class="sh-band">Seite 3 · Abzüge</div>
+      <div class="sh-row"><span class="zz">11.1</span><span class="c">220</span><span class="l">Berufsauslagen</span><span class="v">5 972</span></div>
+      <div class="sh-row"><span class="zz">14.1</span><span class="c">262</span><span class="l">Säule 3a</span><span class="v">7 258</span></div>
+      <div class="sh-row"><span class="zz">15</span><span class="c">270</span><span class="l">Versicherungsprämien</span><span class="v">2 900</span></div>
+      <div class="sh-row sh-total"><span class="zz">25</span><span class="c">390</span><span class="l">Steuerbares Einkommen</span><span class="v">76 690</span></div>
+      <span class="sh-seal" aria-hidden="true"><span>Geprüft</span></span>
+      <figcaption>Beispiel</figcaption>
+    </figure>
+  </div>
+</section>
+
 <main class="page">
   <div class="card casebar" id="caseBar" hidden></div>
   <div class="notice" id="lockNote" hidden style="margin-top:24px"></div>
-  <div class="intro">
+  <div class="howto" id="howto" hidden>
+    <div><span class="n">1</span><span><b>Belege hochladen</b>Alle auf einmal, als PDF oder Foto.</span></div>
+    <div><span class="n">2</span><span><b>Offene Fragen</b>Nur, was auf keinem Beleg steht.</span></div>
+    <div><span class="n">3</span><span><b>Bezahlen</b>Formular kommt per E-Mail.</span></div>
+  </div>
+  <div class="intro" id="upload" style="scroll-margin-top:80px">
     <span class="label" id="introLabel">Steuererklärung Kanton Zürich</span>
     <h1 id="introTitle">Laden Sie einfach alle Belege hoch</h1>
     <p class="muted">taxflix erkennt selbst, um welchen Beleg es sich handelt, wem er gehört und welche Beträge darauf stehen. Daraus ergeben sich Ihr Haushalt und Ihre Steuererklärung.</p>
-    <ul class="trust" id="trust" hidden>
-      <li><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>Kein Konto nötig</li>
-      <li><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>Bezahlen erst am Schluss</li>
-      <li><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>Ausgefülltes Formular per E-Mail</li>
-    </ul>
     <div class="yearpick" id="yearPick" hidden><label for="yearSel">Steuerjahr</label><select id="yearSel"><option value="2025">2025</option><option value="2026">2026</option></select></div>
   </div>
 
@@ -502,9 +583,9 @@ addEventListener("pagehide",()=>{ TX.flushCase().catch(()=>{}); });
     }
     S=TX.emptyState(2025);
     document.body.classList.add("fresh");
-    $("trust").hidden=false; $("yearPick").hidden=false;
+    $("hero").hidden=false; $("howto").hidden=false; $("yearPick").hidden=false; $("loginLink").hidden=false;
     $("yearSel").addEventListener("change",()=>{ S.year=+$("yearSel").value; S.overrides.year=S.year; });
-    $("introLabel").textContent="Steuererklärung Kanton Zürich";
+    $("introLabel").textContent="Schritt 1";
     setupHeader(); TX.rebuild(S);
   } else {
     if(!USER){ location.replace("upload.html"); return; }
