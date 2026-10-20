@@ -11,7 +11,7 @@ async function token(pw) {
   const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("taxflix-zugang:" + pw));
   return [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, "0")).join("");
 }
-const safeNext = n => (typeof n === "string" && n.startsWith("/") && !n.startsWith("//") && !n.startsWith("/__zugang")) ? n : "/";
+const safeNext = n => (typeof n === "string" && n.startsWith("/") && !n.startsWith("//") && !n.startsWith("/__zugang") && !n.startsWith("/__abmelden")) ? n : "/";
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 function page(next, wrong) {
@@ -55,6 +55,11 @@ export default async function middleware(request) {
   const pw = process.env.SITE_PASSWORD;
   if (!pw) return; // kein Passwort gesetzt: Website ist offen
   const url = new URL(request.url);
+  // Zugang wieder abmelden: /__abmelden aufrufen
+  if (url.pathname === "/__abmelden") {
+    return new Response(null, { status: 303, headers: { Location: "/", "Cache-Control": "no-store",
+      "Set-Cookie": `${COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0` } });
+  }
   const t = await token(pw);
   const cookies = (request.headers.get("cookie") || "").split(/;\s*/);
   if (cookies.includes(COOKIE + "=" + t)) return; // Zugang vorhanden: Seite normal ausliefern
