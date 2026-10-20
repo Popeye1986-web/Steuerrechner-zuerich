@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Steuerfälle · taxflix</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="styles.css">
 <style>
 body.pending main{visibility:hidden}
@@ -13,9 +13,9 @@ body.pending main{visibility:hidden}
 .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
 @media (max-width:760px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .kpi{padding:16px 18px;display:flex;flex-direction:column;gap:6px;text-align:left;cursor:pointer;border:1px solid var(--line-soft);background:var(--sheet);border-radius:var(--r);color:var(--ink);font:inherit}
-.kpi:hover{border-color:#555}
-.kpi[aria-pressed="true"]{border-color:var(--red);background:linear-gradient(160deg,#2a0d10,var(--sheet) 70%)}
-.kpi .v{font-family:var(--f-num);font-size:32px;line-height:1;letter-spacing:-.03em}
+.kpi:hover{border-color:#b9c4d2}
+.kpi[aria-pressed="true"]{border-color:var(--red);background:var(--red-soft);box-shadow:0 0 0 1px var(--red) inset}
+.kpi .v{font-family:var(--f-display);font-weight:600;font-size:32px;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
 .kpi .s{font-size:13.5px;color:var(--muted)}
 .tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:24px}
 .tools .field{flex:1 1 260px}
@@ -25,15 +25,17 @@ table{border-collapse:collapse;width:100%;min-width:960px;font-size:15px}
 thead th{text-align:left;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:12px 14px;border-bottom:1px solid var(--line)}
 th.r,td.r{text-align:right}
 td{padding:12px 14px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
-tbody tr:hover td{background:#191919}
+tbody tr:hover td{background:#f7f9fc}
 td .sub{display:block;font-size:13.5px;color:var(--muted)}
-td.amt{font-family:var(--f-num);white-space:nowrap}
+td b{white-space:nowrap}
+td.when{white-space:nowrap}
+td.amt{font-variant-numeric:tabular-nums;white-space:nowrap}
 td.acts{white-space:nowrap;text-align:right}
 td.acts .btn{margin-left:4px}
 .newcase{padding:20px;display:flex;flex-direction:column;gap:14px;margin-bottom:20px}
 .newcase .row{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1.4fr) 140px auto;gap:12px;align-items:end}
 @media (max-width:760px){.newcase .row{grid-template-columns:minmax(0,1fr)}}
-.invite{padding:16px;border:1px solid #24412d;background:var(--ok-soft);border-radius:var(--r);display:flex;flex-direction:column;gap:10px}
+.invite{padding:16px;border:1px solid #bfe0cc;background:var(--ok-soft);border-radius:var(--r);display:flex;flex-direction:column;gap:10px}
 .invite pre{margin:0;white-space:pre-wrap;font-family:var(--f-body);font-size:15px;color:var(--ink);background:var(--bg);border-radius:4px;padding:12px}
 .msg{font-size:14.5px}
 .msg.bad{color:var(--bad)}
@@ -153,7 +155,7 @@ function render(){
       el("td",{class:"r amt",text:String(s.docs)}),
       el("td",{class:"r amt",style:s.missing?"color:var(--warn)":"color:var(--muted)",text:String(s.missing)}),
       el("td",{class:"r amt",text:s.total==null?"–":TX.chf(s.total)}),
-      el("td",{class:"muted",text:ago(r.updated_at)}),
+      el("td",{class:"muted when",text:ago(r.updated_at)}),
       el("td",{class:"acts"},
         el("a",{class:"btn small",href:"upload.html?fall="+r.id,text:"Belege"}),
         el("a",{class:"btn small",href:"ergebnis.html?fall="+r.id,text:"Ergebnis"}),

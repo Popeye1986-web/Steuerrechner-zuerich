@@ -5,63 +5,71 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Anmelden · taxflix</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
+/* taxflix Login: links ein ruhiges Nachtblau mit Vertrauenshinweisen, rechts das Formular auf hellem Grund */
 :root{
-  --paper:#141414; --sheet:#1e1e1e; --ink:#f3f3f3; --muted:#a8a8a8; --line:#3a3a3a; --line-soft:#282828;
-  --zh:#e11d2a; --zh-hover:#c41623; --zh-soft:#3a1517; --zh-ink:#ffffff; --link:#ff6b73;
-  --panel:#0b0b0b; --panel-ink:#ffffff; --panel-muted:#b3b3b3;
-  --ok:#46d369; --ok-soft:#163220; --bad:#ff7b7b; --bad-soft:#3d1a1a;
-  --f-display:"Archivo Black","Arial Black",Impact,sans-serif;
-  --f-body:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --paper:#f5f7fa; --sheet:#ffffff; --ink:#0e1a2b; --muted:#5b6778; --line:#d9e0e8; --line-soft:#e8edf2;
+  --zh:#14406e; --zh-hover:#0e3157; --zh-soft:#e9f0f8; --zh-ink:#ffffff; --link:#14406e;
+  --panel:#0b1f38; --panel-ink:#ffffff; --panel-muted:#a9b8cc; --panel-line:rgba(169,184,204,.22);
+  --ok:#147a4a; --ok-soft:#e6f4ec; --bad:#b42318; --bad-soft:#fdecea;
+  --f-display:"Instrument Sans","Helvetica Neue",Arial,sans-serif;
+  --f-body:"Instrument Sans","Helvetica Neue",Arial,sans-serif;
   --f-num:"IBM Plex Mono",ui-monospace,Menlo,monospace;
-  color-scheme:dark;
+  color-scheme:light;
 }
 *{box-sizing:border-box}
 html,body{min-height:100%}
-body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.55}
 [hidden]{display:none!important}
-a{color:var(--link)} a:hover{color:#ff8f95}
-:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+a{color:var(--link);text-underline-offset:2px} a:hover{color:var(--zh-hover)}
+:focus-visible{outline:2px solid var(--zh);outline-offset:2px;border-radius:4px}
 .layout{min-height:100vh;display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr)}
 @media (max-width:860px){.layout{grid-template-columns:minmax(0,1fr)}.side{display:none!important}}
 
-.side{background:radial-gradient(900px 600px at 0% 100%,#5c0b12 0%,rgba(11,11,11,0) 65%),linear-gradient(180deg,#0b0b0b,#141414);color:var(--panel-ink);padding:48px max(32px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;justify-content:space-between;gap:40px}
+.side{background:linear-gradient(170deg,#0b1f38 0%,#13304f 100%);color:var(--panel-ink);padding:48px max(40px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;justify-content:space-between;gap:40px}
 .brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit}
-.wordmark{font-family:var(--f-display);font-size:30px;letter-spacing:-.04em;line-height:1;color:var(--panel-ink)}
-.wordmark b{color:var(--zh);font-weight:400}
-.side h2{font-family:var(--f-display);font-weight:400;font-size:40px;line-height:1.05;letter-spacing:-.02em;margin:0;max-width:14em;text-wrap:balance}
-.ledger{list-style:none;margin:0;padding:0;border-top:1px solid rgba(169,198,228,.25);max-width:420px}
-.ledger li{display:grid;grid-template-columns:56px 1fr auto;gap:12px;padding:12px 0;border-bottom:1px solid rgba(169,198,228,.25);font-size:15px}
-.ledger .z{font-family:var(--f-num);color:var(--zh)}
-.ledger .v{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.wordmark{display:inline-flex;align-items:center;gap:0;font-family:var(--f-display);font-weight:700;font-size:26px;letter-spacing:-.035em;line-height:1;color:var(--ink)}
+.wordmark::before{content:"";width:28px;height:28px;flex:none;margin-right:10px;background:var(--zh);-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1.5 3.5 4.8v6.4c0 5.3 3.6 9.9 8.5 11.3 4.9-1.4 8.5-6 8.5-11.3V4.8L12 1.5Zm-1.3 14.6-3.9-3.9 1.5-1.5 2.4 2.4 5.2-5.2 1.5 1.5-6.7 6.7Z'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1.5 3.5 4.8v6.4c0 5.3 3.6 9.9 8.5 11.3 4.9-1.4 8.5-6 8.5-11.3V4.8L12 1.5Zm-1.3 14.6-3.9-3.9 1.5-1.5 2.4 2.4 5.2-5.2 1.5 1.5-6.7 6.7Z'/%3E%3C/svg%3E") center/contain no-repeat}
+.wordmark b{color:var(--zh);font-weight:700}
+.side .wordmark{color:#fff}
+.side .wordmark::before{background:#fff}
+.side .wordmark b{color:#9fc2ea}
+.side h2{font-family:var(--f-display);font-weight:600;font-size:36px;line-height:1.12;letter-spacing:-.025em;margin:0;max-width:14em;text-wrap:balance}
+.ledger{list-style:none;margin:0;padding:0;border-top:1px solid var(--panel-line);max-width:420px}
+.ledger li{display:grid;grid-template-columns:56px 1fr auto;gap:12px;padding:12px 0;border-bottom:1px solid var(--panel-line);font-size:15px}
+.ledger .z{font-family:var(--f-num);color:#9fc2ea}
+.ledger .v{font-variant-numeric:tabular-nums}
+.trust{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;font-size:15px;color:#dbe4ef}
+.trust li{display:flex;gap:10px;align-items:flex-start}
+.trust li::before{content:"";width:18px;height:18px;flex:none;margin-top:2px;background:#9fc2ea;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1.5 3.5 4.8v6.4c0 5.3 3.6 9.9 8.5 11.3 4.9-1.4 8.5-6 8.5-11.3V4.8L12 1.5Zm-1.3 14.6-3.9-3.9 1.5-1.5 2.4 2.4 5.2-5.2 1.5 1.5-6.7 6.7Z'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1.5 3.5 4.8v6.4c0 5.3 3.6 9.9 8.5 11.3 4.9-1.4 8.5-6 8.5-11.3V4.8L12 1.5Zm-1.3 14.6-3.9-3.9 1.5-1.5 2.4 2.4 5.2-5.2 1.5 1.5-6.7 6.7Z'/%3E%3C/svg%3E") center/contain no-repeat}
 .side small{color:var(--panel-muted);font-size:14px}
 
 .main{display:flex;flex-direction:column;justify-content:center;align-items:center;padding-block:40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .mobile-brand{display:none;margin-bottom:28px}
 @media (max-width:860px){.mobile-brand{display:flex;color:var(--ink)}}
-.card{width:100%;max-width:440px;display:flex;flex-direction:column;gap:22px}
-h1{font-family:var(--f-display);font-weight:400;font-size:34px;line-height:1.05;margin:0;letter-spacing:-.02em}
+.card{width:100%;max-width:440px;display:flex;flex-direction:column;gap:22px;background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:32px;box-shadow:0 1px 2px rgba(14,26,43,.04),0 8px 28px rgba(14,26,43,.06)}
+@media (max-width:480px){.card{padding:22px}}
+h1{font-family:var(--f-display);font-weight:600;font-size:30px;line-height:1.1;margin:0;letter-spacing:-.025em}
 .lead{margin:0;color:var(--muted)}
-.tabs{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:6px;padding:4px;background:var(--sheet)}
-.tabs button{min-height:44px;border:0;border-radius:4px;background:transparent;color:var(--muted);font:inherit;font-weight:600;cursor:pointer}
-.tabs button[aria-selected="true"]{background:var(--zh);color:var(--zh-ink)}
+.tabs{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:9px;padding:4px;background:#f1f4f8}
+.tabs button{min-height:42px;border:0;border-radius:7px;background:transparent;color:var(--muted);font:inherit;font-weight:600;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--sheet);color:var(--ink);box-shadow:0 1px 3px rgba(14,26,43,.12)}
 form{display:flex;flex-direction:column;gap:16px}
 .field{display:flex;flex-direction:column;gap:6px}
-.field label{font-weight:600;font-size:15px}
-.field input{min-height:48px;padding:10px 12px;border:1px solid var(--line);border-radius:4px;background:var(--sheet);color:var(--ink);font:inherit}
-.field input{background:#2a2a2a!important;border-color:#3a3a3a!important}
-.field input:focus{border-color:var(--ink)!important}
+.field label{font-weight:500;font-size:14px;color:#3a4656}
+.field input{min-height:46px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--sheet);color:var(--ink);font:inherit;transition:border-color .15s,box-shadow .15s}
+.field input:focus{border-color:var(--zh);outline:none;box-shadow:0 0 0 3px rgba(20,64,110,.12)}
 .hint{font-size:14px;color:var(--muted)}
 .row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
-.linkbtn{border:0;background:none;padding:6px 0;color:var(--link);font:inherit;font-size:15px;cursor:pointer;text-decoration:underline}
-.primary{min-height:50px;border:0;border-radius:4px;background:var(--zh);color:var(--zh-ink);font:inherit;font-weight:600;font-size:17px;cursor:pointer}
+.linkbtn{border:0;background:none;padding:6px 0;color:var(--link);font:inherit;font-size:15px;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.primary{min-height:48px;border:0;border-radius:8px;background:var(--zh);color:var(--zh-ink);font:inherit;font-weight:600;font-size:16px;cursor:pointer;box-shadow:0 1px 2px rgba(20,64,110,.25)}
 .primary:hover{background:var(--zh-hover)}
 .primary:disabled{opacity:.6;cursor:default}
-.msg{border-radius:4px;padding:12px 14px;font-size:15px}
+.msg{border-radius:8px;padding:12px 14px;font-size:15px}
 .msg.ok{background:var(--ok-soft);color:var(--ok)}
 .msg.bad{background:var(--bad-soft);color:var(--bad)}
-.setup{border:1px solid var(--line);background:var(--sheet);border-radius:6px;padding:16px;display:flex;flex-direction:column;gap:8px;font-size:15px}
+.setup{border:1px solid var(--line);background:#f1f4f8;border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:8px;font-size:15px}
 .setup code{font-family:var(--f-num);font-size:14px}
 .fine{font-size:14px;color:var(--muted);margin:0}
 </style>
@@ -76,6 +84,11 @@ form{display:flex;flex-direction:column;gap:16px}
         <li><span class="z">1.1</span><span>Nettolohn</span><span class="v">92 400</span></li>
         <li><span class="z">4.1</span><span>Ertrag Wertschriften</span><span class="v">420</span></li>
         <li><span class="z">11</span><span>Berufsauslagen</span><span class="v">6 852</span></li>
+      </ul>
+      <ul class="trust">
+        <li>Ihre Daten sieht nur Ihr Konto und Ihre Fachperson</li>
+        <li>Belege werden automatisch gelesen und geordnet</li>
+        <li>Bezahlung sicher über Stripe, auch mit TWINT</li>
       </ul>
     </div>
     <small>taxflix · Kein Angebot des Kantonalen Steueramts Zürich</small>

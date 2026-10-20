@@ -5,25 +5,25 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meine Steuererklärung · taxflix</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="styles.css">
 <style>
 body.pending main{visibility:hidden}
 .intro{display:flex;flex-direction:column;gap:10px;padding-block:40px 24px;max-width:720px}
 .cases{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
-.case{padding:22px;display:flex;flex-direction:column;gap:14px;background:linear-gradient(160deg,#2a0d10,var(--sheet) 60%)}
-.case .yr{font-family:var(--f-display);font-size:44px;line-height:1;letter-spacing:-.03em}
+.case{padding:24px;display:flex;flex-direction:column;gap:14px}
+.case .yr{font-family:var(--f-display);font-weight:600;font-size:44px;line-height:1;letter-spacing:-.03em}
 .steps4{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;font-size:15px}
 .steps4 li{display:flex;gap:10px;align-items:center;color:var(--muted)}
-.steps4 li .d{width:22px;height:22px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;font-size:12px;font-family:var(--f-num);flex:none}
-.steps4 li.done{color:var(--ink)} .steps4 li.done .d{background:var(--ok);border-color:var(--ok);color:#0b1a10}
+.steps4 li .d{width:22px;height:22px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;font-size:12px;font-weight:600;flex:none}
+.steps4 li.done{color:var(--ink)} .steps4 li.done .d{background:var(--ok);border-color:var(--ok);color:#fff}
 .steps4 li.now{color:var(--ink);font-weight:600} .steps4 li.now .d{background:var(--red);border-color:var(--red);color:#fff}
-.start{padding:26px;display:flex;flex-direction:column;gap:16px;max-width:620px;background:linear-gradient(160deg,#2a0d10,var(--sheet) 60%)}
+.start{padding:26px;display:flex;flex-direction:column;gap:16px;max-width:620px;background:linear-gradient(180deg,#eef3f9 0%,var(--sheet) 60%)}
 .start form{display:flex;flex-direction:column;gap:14px}
 .start .row{display:grid;grid-template-columns:minmax(0,1fr) 140px;gap:12px}
 @media (max-width:520px){.start .row{grid-template-columns:minmax(0,1fr)}}
-.donebox{padding:32px 26px;display:flex;flex-direction:column;gap:14px;align-items:flex-start;border-color:#24412d;background:linear-gradient(160deg,#10301c,var(--sheet) 70%);margin-bottom:20px}
-.donebox .big{font-family:var(--f-display);font-size:clamp(34px,5vw,52px);line-height:1;letter-spacing:-.03em}
+.donebox{padding:32px 26px;display:flex;flex-direction:column;gap:14px;align-items:flex-start;border-color:#bfe0cc;background:linear-gradient(180deg,#e9f5ee 0%,var(--sheet) 70%);margin-bottom:20px}
+.donebox .big{font-family:var(--f-display);font-weight:600;color:var(--ok);font-size:clamp(34px,5vw,52px);line-height:1;letter-spacing:-.03em}
 .more{margin-top:20px}
 .msg.bad{color:var(--bad)}
 </style>

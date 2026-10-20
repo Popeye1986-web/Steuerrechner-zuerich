@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Ergebnis · taxflix</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="styles.css">
 <style>
 body.pending main{visibility:hidden}
@@ -13,15 +13,15 @@ body.pending main{visibility:hidden}
 .intro .acts{display:flex;flex-wrap:wrap;gap:8px}
 .hero{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px;align-items:stretch}
 @media (max-width:900px){.hero{grid-template-columns:minmax(0,1fr)}}
-.total{padding:26px;display:flex;flex-direction:column;gap:14px;background:linear-gradient(160deg,#2a0d10 0%,var(--sheet) 55%)}
-.total .big{font-family:var(--f-num);font-size:clamp(40px,6vw,60px);line-height:1;letter-spacing:-.03em}
+.total{padding:28px;display:flex;flex-direction:column;gap:14px;background:linear-gradient(180deg,#eef3f9 0%,var(--sheet) 60%)}
+.total .big{font-family:var(--f-display);font-weight:600;font-size:clamp(40px,6vw,60px);line-height:1;letter-spacing:-.03em}
 .sbar{display:flex;height:12px;border-radius:2px;overflow:hidden;background:var(--sheet-2)}
 .sbar span{display:block;height:100%}
 .legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13.5px;color:var(--muted)}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
 .kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .kpi{padding:16px 18px;display:flex;flex-direction:column;gap:4px}
-.kpi .v{font-family:var(--f-num);font-size:24px;letter-spacing:-.02em}
+.kpi .v{font-family:var(--f-display);font-weight:600;font-size:24px;letter-spacing:-.02em}
 .kpi .s{font-size:13.5px;color:var(--muted)}
 .lines{display:flex;flex-direction:column;gap:6px}
 .line{display:flex;justify-content:space-between;gap:12px;font-size:15px}
@@ -38,14 +38,14 @@ thead th{position:sticky;top:0;background:var(--sheet);text-align:left;font-size
 th.r,td.r{text-align:right}
 td{padding:10px 14px;border-bottom:1px solid var(--line-soft);vertical-align:top}
 td.zc{width:70px}
-tr.sec td{background:var(--bg);font-family:var(--f-display);font-size:15px;padding-top:18px;color:var(--ink);border-bottom:1px solid var(--line)}
+tr.sec td{background:var(--sheet-2);font-family:var(--f-display);font-weight:600;font-size:14px;letter-spacing:.01em;padding-top:18px;color:var(--ink);border-bottom:1px solid var(--line)}
 tr.summe td{font-weight:700}
 tr.total td{font-weight:700;background:var(--red-soft)}
-tr.total td.r{color:#fff}
+tr.total td.r{color:var(--red)}
 td .nt{display:block;font-size:13px;color:var(--muted);margin-top:2px}
-td.amt{font-family:var(--f-num);font-variant-numeric:tabular-nums;white-space:nowrap}
+td.amt{font-variant-numeric:tabular-nums;white-space:nowrap}
 .copy{border:1px solid var(--line);background:transparent;border-radius:4px;min-height:32px;padding:0 10px;font-size:13px;cursor:pointer;color:var(--muted)}
-.copy:hover{color:var(--ink);border-color:#555}
+.copy:hover{color:var(--ink);border-color:#b9c4d2}
 .copy.done{border-color:var(--ok);color:var(--ok)}
 .docs{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px}
 .docs li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:var(--sheet);border:1px solid var(--line-soft);border-radius:4px;font-size:15px}
@@ -182,7 +182,7 @@ function render(){
   $("totLabel").textContent = `Geschätzte Steuern ${S.year}`;
   $("tot").textContent = chf(T.total);
   $("totSub").textContent = R.ein>0 ? `${pct(T.total/R.ein)} der Einkünfte · monatlich rund ${chf(T.total/12)}` : "";
-  const parts=[["Staat",T.kanton,"var(--red)"],["Gemeinde",T.gemeinde,"#f3f3f3"],["Bund",T.bund,"#8c8c8c"],["Kirche",T.kirche,"#f5b041"],["Personalsteuer",T.personal,"#555"]].filter(p=>p[1]>0.5);
+  const parts=[["Staat",T.kanton,"#14406e"],["Gemeinde",T.gemeinde,"#5f86b3"],["Bund",T.bund,"#a9bdd4"],["Kirche",T.kirche,"#c49a3a"],["Personalsteuer",T.personal,"#8a94a3"]].filter(p=>p[1]>0.5);
   $("sbar").replaceChildren(...parts.map(p=>el("span",{style:`width:${(p[1]/T.total*100).toFixed(2)}%;background:${p[2]}`})));
   $("legend").replaceChildren(...parts.map(p=>el("span",{}, el("i",{style:"background:"+p[2]}), p[0])));
   const L=(l,v,c)=>el("div",{class:"line"+(c?" "+c:"")}, el("span",{text:l}), el("span",{class:"num",text:chf(v)}));
@@ -223,7 +223,7 @@ function renderTips(){
   if(R.versAkt===0) add("warn","Prämienabzug fehlt", `Es sind keine Versicherungsprämien erfasst. Mit der Prämienbescheinigung der Krankenkasse können Sie bis ${chf(R.capS)} abziehen.`);
   else if(R.versAkt>R.capS) add("mute","Prämien über dem Höchstbetrag", `Von ${chf(R.versAkt)} Prämien sind bei der Staatssteuer ${chf(R.capS)} abzugsfähig. Weitere Prämienbelege bringen keinen zusätzlichen Abzug.`);
   const need=TX.checklist(S).filter(c=>c.needed && c.status==="fehlt");
-  if(need.length) add("bad",`${need.length} Beleg${need.length>1?"e":""} fehlen`, "Noch offen: "+need.slice(0,3).map(c=>c.type.name+(c.person!=="g"&&R.np===2?" ("+TX.personName(S,c.person)+")":"")).join(", ")+(need.length>3?" und weitere":"")+". Ohne diese Werte ist das Ergebnis unvollständig.");
+  if(need.length) add("bad",need.length>1 ? `${need.length} Belege fehlen` : "1 Beleg fehlt", "Noch offen: "+need.slice(0,3).map(c=>c.type.name+(c.person!=="g"&&R.np===2?" ("+TX.personName(S,c.person)+")":"")).join(", ")+(need.length>3?" und weitere":"")+". Ohne diese Werte ist das Ergebnis unvollständig.");
   if(R.vst>0) add("ok","Verrechnungssteuer", `${chf(R.vst)} erhalten Sie zurück. Dafür die Erträge im Wertschriftenverzeichnis angeben.`);
   const sp=TX.valueOf(S,"spenden"); if(sp>0 && sp<100) add("warn","Spenden zu tief", "Spenden sind erst ab CHF 100 pro Jahr abzugsfähig.");
   add("mute","Effektiv und Grenzsatz", `Sie zahlen im Schnitt ${pct(T.total/Math.max(1,R.ein))} Ihrer Einkünfte. Jeder zusätzliche Abzug von CHF 1'000 spart Ihnen rund ${chf(R.grenz*1000)}.`);
