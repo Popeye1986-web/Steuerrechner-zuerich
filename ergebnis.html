@@ -47,6 +47,24 @@ td.amt{font-variant-numeric:tabular-nums;white-space:nowrap}
 .copy{border:1px solid var(--line);background:transparent;border-radius:4px;min-height:32px;padding:0 10px;font-size:13px;cursor:pointer;color:var(--muted)}
 .copy:hover{color:var(--ink);border-color:#b9c4d2}
 .copy.done{border-color:var(--ok);color:var(--ok)}
+table.form tr.page td{background:var(--navy);color:#fff;font-weight:600;font-size:13px;letter-spacing:.06em;text-transform:uppercase;padding:10px 14px;border-bottom:0}
+table.form tr.head td{font-weight:600;background:var(--sheet-2);padding-top:12px}
+table.form tr.head td.zc .z{font-weight:600}
+table.form tr.sub td:nth-child(2){padding-left:30px}
+table.form tr.nil td.amt{color:#b4bdc9}
+table.form tr.summe td{font-weight:700;border-top:1px solid var(--line)}
+table.form tr.tot td{font-weight:700;background:var(--red-soft)}
+.helpers{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px}
+.helper{padding:0;overflow:hidden}
+.helper h3{padding:14px 16px;border-bottom:1px solid var(--line-soft);display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.helper table{min-width:0;font-size:14.5px}
+.helper td{padding:8px 16px}
+.helper tr.sum td{font-weight:700;border-top:1px solid var(--line)}
+table.calc{min-width:560px}
+table.calc td.k{color:var(--muted);width:46%}
+table.calc tr.sum td{font-weight:700;border-top:1px solid var(--line)}
+table.calc tr.grand td{font-weight:700;background:var(--red-soft);font-size:16px}
+table.calc tr.h td{background:var(--sheet-2);font-weight:600;font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:var(--info)}
 .docs{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px}
 .docs li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:var(--sheet);border:1px solid var(--line-soft);border-radius:4px;font-size:15px}
 .casebar{margin-top:24px;padding:14px 18px;display:flex;flex-wrap:wrap;align-items:center;gap:10px 20px}
@@ -113,15 +131,28 @@ td.amt{font-variant-numeric:tabular-nums;white-space:nowrap}
     </section>
 
     <section class="block" aria-labelledby="h-z">
-      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;align-items:baseline">
-        <h2 id="h-z">Steuererklärung Zürich nach Ziffern</h2>
-        <span class="note">Ziffern wie im Formular «Steuererklärung <span id="formYear"></span>» des Kantons Zürich</span>
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 16px;align-items:baseline">
+        <h2 id="h-z">Steuererklärung <span id="formYear"></span> · Formular Kanton Zürich</h2>
+        <label class="check noprint" for="hideEmpty" style="min-height:32px;font-size:14px"><input id="hideEmpty" type="checkbox">Leere Zeilen ausblenden</label>
       </div>
+      <p class="note">Alle Ziffern in der Reihenfolge des Formulars «Steuererklärung» des Kantonalen Steueramts Zürich. Linke Spalte Staats- und Gemeindesteuer, rechte Spalte direkte Bundessteuer.</p>
       <div class="card tablebox">
-        <table>
+        <table class="form">
           <thead><tr><th>Ziffer</th><th>Bezeichnung</th><th class="r">Staatssteuer CHF</th><th class="r">Bundessteuer CHF</th><th class="noprint"><span style="position:absolute;left:-9999px">Kopieren</span></th></tr></thead>
           <tbody id="rows"></tbody>
         </table>
+      </div>
+    </section>
+
+    <section class="block" aria-labelledby="h-help">
+      <h2 id="h-help">Hilfsblätter</h2>
+      <div class="helpers" id="helpers"></div>
+    </section>
+
+    <section class="block" aria-labelledby="h-calc">
+      <h2 id="h-calc">Steuerberechnung</h2>
+      <div class="card tablebox">
+        <table class="calc"><tbody id="calcRows"></tbody></table>
       </div>
     </section>
 
@@ -230,18 +261,199 @@ function renderTips(){
   $("tips").replaceChildren(...tips);
 }
 
+/* ---------- Formular wie auf Papier ---------- */
+function buildForm(){
+  const rows=R.rows, np=R.np;
+  const g=(z,p)=>rows.filter(r=>r.z===z && (p===undefined || r.p===p)).reduce((a,r)=>({s:a.s+(+r.s||0), b:a.b+(r.b==null?0:+r.b||0)}),{s:0,b:0});
+  const nm=p=>np===2?" · "+TX.personName(S,p):"";
+  const out=[];
+  const page=t=>out.push({kind:"page",l:t});
+  const head=(z,l)=>out.push({kind:"head",z,l});
+  const v=(z,l,val,o)=>out.push(Object.assign({kind:"wert",z,l,s:val.s,b:val.b},o||{}));
+  const one=x=>({s:x,b:x});
+  const sum=(z,l,s,b,o)=>out.push(Object.assign({kind:"summe",z,l,s,b},o||{}));
+  const total=(z,l,s,b,o)=>out.push(Object.assign({kind:"total",z,l,s,b},o||{}));
+  const persons=[...Array(np).keys()];
+
+  page("Seite 2 · Einkünfte im In- und Ausland");
+  head("1","Einkünfte aus unselbständiger Erwerbstätigkeit");
+  persons.forEach(p=>v("1.1","Haupterwerb"+nm(p),g("1.1",p),{sub:1}));
+  persons.forEach(p=>v("1.2","Nebenerwerb"+nm(p),g("1.2",p),{sub:1}));
+  head("2","Einkünfte aus selbständiger Erwerbstätigkeit");
+  persons.forEach(p=>v("2.1","Haupterwerb"+nm(p),g("2.1",p),{sub:1}));
+  persons.forEach(p=>v("2.2","Nebenerwerb"+nm(p),one(0),{sub:1}));
+  head("3","Einkünfte aus Sozial- und anderen Versicherungen, Leibrenten");
+  v("3.1","AHV-/IV-Renten (100 %)",g("3.1"),{sub:1});
+  v("3.2","Renten/Pensionen",g("3.2"),{sub:1});
+  v("3.3","Erwerbsausfallentschädigungen aus Arbeitslosenversicherung",g("3.3"),{sub:1});
+  v("3.4","Kinder- und Familienzulagen, Mutterschaftsentschädigungen, Taggelder",g("3.4"),{sub:1});
+  head("4","Wertschriftenertrag");
+  v("4.1","Ertrag aus Wertschriften, Guthaben und Lotterien",g("4.1"),{sub:1,note:"gemäss Wertschriftenverzeichnis"});
+  v("4.2","Davon aus qualifizierten Beteiligungen",one(0),{sub:1});
+  head("5","Übrige Einkünfte und Gewinne");
+  v("5.1","Unterhaltsbeiträge vom geschiedenen/getrennten Ehegatten/Partner",g("5.1"),{sub:1});
+  v("5.2","Unterhaltsbeiträge für minderjährige Kinder",one(0),{sub:1});
+  v("5.3","Ertrag aus Geschäfts- und Korporationsanteilen",one(0),{sub:1});
+  v("5.4","Weitere Einkünfte",g("5.4"),{sub:1});
+  v("5.5","Kapitalabfindungen für wiederkehrende Leistungen",one(0),{sub:1});
+  v("6","Nettoertrag aus Liegenschaften",g("6"),{note: R.raw.liegBrutto ? `Bruttoertrag ${TX.nf.format(R.raw.liegBrutto)} abzüglich Unterhalt ${TX.nf.format(R.raw.liegUnt)}` : ""});
+  sum("7","Total der Einkünfte",R.ein,R.ein,{note:"Übertrag auf Seite 3, Ziffer 19"});
+
+  page("Seite 3 · Abzüge");
+  head("11","Berufsauslagen bei unselbständiger Erwerbstätigkeit");
+  persons.forEach(p=>v("11."+(p+1),"Person "+(p+1)+nm(p),g("11."+(p+1)),{sub:1,note:"siehe Hilfsblatt Berufsauslagen"}));
+  v("12","Schuldzinsen",g("12"));
+  head("13","Unterhaltsbeiträge und Rentenleistungen");
+  v("13.1","Unterhaltsbeiträge an den geschiedenen oder getrennt lebenden Ehegatten/Partner",g("13.1"),{sub:1});
+  v("13.2","Unterhaltsbeiträge für minderjährige Kinder",one(0),{sub:1});
+  v("13.3","Rentenleistungen, abzugsfähiger Ertragsanteil",one(0),{sub:1});
+  head("14","Beiträge an anerkannte Formen der gebundenen Selbstvorsorge (3. Säule a)");
+  persons.forEach(p=>v("14."+(p+1),"Person "+(p+1)+nm(p),g("14."+(p+1)),{sub:1}));
+  v("15","Versicherungsprämien und Zinsen von Sparkapitalien",g("15"),{note:"siehe Hilfsblatt Versicherungsprämien"});
+  head("16","Weitere Abzüge");
+  v("16.1","Beiträge an die AHV, IV und 2. Säule (Einkauf)",g("16.1"),{sub:1});
+  v("16.2","Berufsorientierte Aus- und Weiterbildungskosten",g("16.2"),{sub:1});
+  v("16.3","Kosten für die Verwaltung des beweglichen Privatvermögens",one(0),{sub:1});
+  v("16.4","Behinderungsbedingte Kosten",one(0),{sub:1});
+  v("16.5","Weitere Abzüge (z.B. Beiträge an politische Parteien)",one(0),{sub:1});
+  v("16.6","Abzug für fremdbetreute Kinder",g("16.6"),{sub:1,note: R.kidsU14 ? `Höchstens ${TX.nf.format(R.Z.betreuung)} (Staat) bzw. ${TX.nf.format(TX.BUND.betreuung)} (Bund) je Kind` : ""});
+  v("17","Sonderabzug bei Erwerbstätigkeit beider Ehegatten/Partner",g("17"));
+  const t18=g("18");
+  sum("18","Total der Abzüge",t18.s,t18.b,{note:"Übertrag in Ziffer 20"});
+
+  page("Seite 3 · Einkommensberechnung");
+  v("19","Total der Einkünfte",one(R.ein),{note:"Übertrag von Ziffer 7"});
+  v("20","Total der Abzüge",t18,{note:"Übertrag von Ziffer 18"});
+  const n21=g("21"); sum("21","Nettoeinkommen",n21.s,n21.b);
+  head("22","Zusätzliche Abzüge");
+  v("22.1","Krankheits- und Unfallkosten",g("22.1"),{sub:1,note:"Anteil über 5 % des Nettoeinkommens"});
+  v("22.2","Gemeinnützige Zuwendungen",g("22.2"),{sub:1,note:"ab CHF 100, höchstens 20 % des Nettoeinkommens"});
+  const r23=g("23"); sum("23","Reineinkommen",r23.s,r23.b);
+  head("24","Steuerfreie Beträge (Sozialabzüge)");
+  v("24.1","Abzug für Kinder"+(R.kids?` (${R.kids})`:""),g("24.1"),{sub:1});
+  v("24.2","Abzug für unterstützte Personen",one(0),{sub:1});
+  const e243=g("24.3"); v("24.3","Abzug für Ehegatten/Partner",{s:0,b:e243.b},{sub:1});
+  sum("25","Steuerbares Einkommen gesamt",Math.max(0,R.raw.e25s),Math.max(0,R.raw.e25b));
+  head("26","Vom steuerbaren Einkommen entfallen auf");
+  v("26.1","Steuerbare Einkünfte in anderen Kantonen",one(0),{sub:1});
+  v("26.2","Steuerbare Einkünfte im Ausland",one(0),{sub:1});
+  total("27","Steuerbares Einkommen im Kanton Zürich bzw. in der Schweiz",Math.max(0,R.raw.e25s),Math.max(0,R.raw.e25b));
+
+  page("Seite 4 · Vermögen im In- und Ausland (nur Staats- und Gemeindesteuer)");
+  head("30","Bewegliches Vermögen");
+  const so={sub:1,staat:1};
+  v("30.1","Wertschriften und Guthaben",g("30.1"),Object.assign({note:"gemäss Wertschriftenverzeichnis"},so));
+  v("30.2","Bargeld, Gold und andere Edelmetalle",g("30.2"),so);
+  v("30.3","Lebens- und Rentenversicherungen (Steuerwert)",g("30.3"),so);
+  v("30.4","Motorfahrzeuge",g("30.4"),so);
+  v("30.5","Geschäfts-/Korporationsanteile",one(0),so);
+  v("30.6","Übrige Vermögenswerte",g("30.6"),so);
+  head("31","Liegenschaften");
+  v("31.1","Zum Verkehrswert besteuert",g("31.1"),so);
+  v("31.2","Zum Ertragswert besteuert (Land- und Forstwirtschaft)",one(0),so);
+  v("32","Eigenkapital Selbständigerwerbender",one(0),{staat:1});
+  sum("33","Total der Vermögenswerte",R.raw.v33,null,{staat:1});
+  v("34","Schulden",one(R.raw.v34),{staat:1});
+  sum("35","Steuerbares Vermögen gesamt",Math.max(0,R.raw.v35),null,{staat:1});
+  head("36","Vom steuerbaren Vermögen entfallen auf");
+  v("36.1","Steuerbare Vermögenswerte in anderen Kantonen",one(0),so);
+  v("36.2","Steuerbare Vermögenswerte im Ausland",one(0),so);
+  total("37","Steuerbares Vermögen im Kanton Zürich",Math.max(0,R.raw.v35),null,{staat:1});
+  return out;
+}
+let FORM=[];
 function renderRows(){
-  const tb=$("rows"); tb.replaceChildren(); let sec=null;
-  for(const r of R.rows){
-    if(r.sec!==sec){ sec=r.sec; tb.append(el("tr",{class:"sec"}, el("td",{colspan:"5",text:sec}))); }
-    const same = r.b!=null && Math.round(r.s)===Math.round(r.b);
-    tb.append(el("tr",{class:r.kind==="wert"?"":r.kind},
+  FORM=buildForm();
+  const hide=$("hideEmpty").checked, tb=$("rows"); tb.replaceChildren();
+  for(const r of FORM){
+    if(r.kind==="page"){ tb.append(el("tr",{class:"page"}, el("td",{colspan:"5",text:r.l}))); continue; }
+    if(r.kind==="head"){
+      if(hide){ const idx=FORM.indexOf(r); const kids=[]; for(let i=idx+1;i<FORM.length && FORM[i].kind==="wert" && FORM[i].sub;i++) kids.push(FORM[i]); if(!kids.some(k=>Math.round(k.s)||Math.round(k.b))) continue; }
+      tb.append(el("tr",{class:"head"}, el("td",{class:"zc"}, el("span",{class:"z",text:r.z})), el("td",{colspan:"4",text:r.l}))); continue;
+    }
+    const empty = !Math.round(r.s||0) && !Math.round(r.b||0);
+    if(hide && empty && r.kind==="wert") continue;
+    const bTxt = r.staat ? "" : (Math.round(r.b||0) ? fmt(r.b) : "–");
+    const cls=[r.kind==="wert"?"":(r.kind==="total"?"tot":r.kind), r.sub?"sub":"", empty?"nil":""].filter(Boolean).join(" ");
+    tb.append(el("tr",{class:cls||null},
       el("td",{class:"zc"}, el("span",{class:"z",text:r.z})),
       el("td",{}, r.l, r.note?el("span",{class:"nt",text:r.note}):null),
-      el("td",{class:"r amt",text:fmt(r.s)}),
-      el("td",{class:"r amt",text: r.b==null ? "–" : fmt(r.b), style: same?"color:var(--muted)":null}),
-      el("td",{class:"noprint"}, r.kind==="wert"||r.kind==="total" ? copyBtn(r.s, "Ziffer "+r.z+" "+r.l) : null)));
+      el("td",{class:"r amt",text: Math.round(r.s||0) ? fmt(r.s) : "–"}),
+      el("td",{class:"r amt",text:bTxt, style: !r.staat && !empty && Math.round(r.s)===Math.round(r.b) ? "color:var(--muted)" : null}),
+      el("td",{class:"noprint"}, Math.round(r.s||0) ? copyBtn(r.s, "Ziffer "+r.z+" "+r.l) : (Math.round(r.b||0) ? copyBtn(r.b, "Ziffer "+r.z+" "+r.l+" Bund") : null))));
   }
+  renderHelpers(); renderCalc();
+}
+$("hideEmpty").addEventListener("change",()=>renderRows());
+
+function helperTable(title, ref, cols, lines){
+  const tb=el("tbody");
+  if(cols) tb.append(el("tr",{}, el("td",{class:"muted"}), ...cols.map(c=>el("td",{class:"r muted",style:"font-size:13px;font-weight:600",text:c}))));
+  for(const [l,vals,cls] of lines) tb.append(el("tr",{class:cls||null}, el("td",{text:l}), ...vals.map(v=>el("td",{class:"r amt",text: v==null ? "" : (typeof v==="string" ? v : fmt(v))}))));
+  return el("article",{class:"card helper"}, el("h3",{}, el("span",{text:title}), el("span",{class:"z",text:ref})), el("div",{class:"tablebox",style:"margin:0"}, el("table",{}, tb)));
+}
+function renderHelpers(){
+  const box=$("helpers"); box.replaceChildren();
+  // Berufsauslagen
+  const weg={oev:"ÖV",velo:"Velo",auto:"Auto",motorrad:"Motorrad",keine:"keiner",offen:"noch offen"};
+  for(const x of R.P){
+    const pe=S.persons[x.p];
+    if(!x.lohn && !x.neben) continue;
+    const km=(pe.weg==="auto"||pe.weg==="motorrad") ? ` · ${pe.km} km × 2 × ${pe.tage} Tage` : "";
+    box.append(helperTable(`Berufsauslagen · ${TX.personName(S,x.p)}`, "Ziffer 11."+(x.p+1), ["Staat","Bund"], [
+      [`Fahrkosten (${weg[pe.weg]||pe.weg}${km}${pe.geschaeftsauto?", Geschäftsauto":""})`, [x.fahrS, x.fahrB]],
+      [`Verpflegung (${pe.verpflegung==="voll"?"auswärts":pe.verpflegung==="verbilligt"?"verbilligt":"keine"})`, [x.verpf, x.verpf]],
+      ["Übrige Berufsauslagen (3 % des Nettolohns, 2'000 bis 4'000)", [x.uebrige, x.uebrige]],
+      ...(x.nebenP?[["Nebenerwerb (20 %, 800 bis 2'400)", [x.nebenP, x.nebenP]]]:[]),
+      ["Total Berufsauslagen", [x.fahrS+x.verpf+x.uebrige+x.nebenP, x.fahrB+x.verpf+x.uebrige+x.nebenP], "sum"]
+    ]));
+  }
+  // Versicherungsprämien
+  const kk=TX.valueOf(S,"krankenkasse_praemien"), ub=TX.valueOf(S,"versicherung_uebrige");
+  box.append(helperTable("Versicherungsprämien", "Ziffer 15", ["Staat","Bund"], [
+    ["Krankenkassenprämien (nach Verbilligung)", [kk, kk]],
+    ["Übrige Versicherungsprämien, Sparzinsen", [ub, ub]],
+    ["Total effektiv bezahlt", [R.versAkt, R.versAkt], "sum"],
+    [`Höchstbetrag (${R.verh?"verheiratet":"alleinstehend"}${R.kids?`, ${R.kids} Kind${R.kids>1?"er":""}`:""}${R.ohneVorsorge?", ohne 2. Säule/3a":""})`, [R.capS, R.capB]],
+    ["Abzug", [Math.min(R.versAkt,R.capS), Math.min(R.versAkt,R.capB)], "sum"]
+  ]));
+  // Wertschriften
+  box.append(helperTable("Wertschriften und Guthaben", "Ziffern 4.1 · 30.1", null, [
+    ["Bank- und Postguthaben per 31.12.", [R.wert.bank]],
+    ["Wertschriften, Steuerwert per 31.12.", [R.wert.depot]],
+    ["Total Vermögen → Ziffer 30.1", [R.wert.bank+R.wert.depot], "sum"],
+    ["Bruttoertrag → Ziffer 4.1", [R.wert.ertrag]],
+    ["Verrechnungssteuer, Rückforderung (35 %)", [R.vst]]
+  ]));
+}
+
+function renderCalc(){
+  const T=R.T, tb=$("calcRows"); tb.replaceChildren();
+  const row=(k,a,cls)=>tb.append(el("tr",{class:cls||null}, el("td",{class:"k",text:k}), el("td",{class:"r amt",text: typeof a==="string" ? a : TX.chf(a)})));
+  const h=t=>tb.append(el("tr",{class:"h"}, el("td",{colspan:"2",text:t})));
+  const kids=R.kids, fam=T.fam;
+  h("Staats- und Gemeindesteuern");
+  row("Steuerbares Einkommen (Ziffer 27), für den Tarif auf 100 abgerundet", R.stE);
+  row("Steuerbares Vermögen (Ziffer 37), für den Tarif auf 1'000 abgerundet", R.verm);
+  row("Tarif", fam ? "Verheiratetentarif (§ 35 Abs. 2 StG)" : "Grundtarif (§ 35 Abs. 1 StG)");
+  row("Einfache Staatssteuer auf dem Einkommen", T.einfE);
+  row("Einfache Staatssteuer auf dem Vermögen", T.einfV);
+  row("Total einfache Staatssteuer (100 %)", T.einf, "sum");
+  row(`Staatssteuer · Steuerfuss ${R.Z.kfuss} %`, T.kanton);
+  row(`Gemeindesteuer · Steuerfuss ${S.gfuss} %`, T.gemeinde);
+  if(T.kirche>0) row(`Kirchensteuer · Steuerfuss ${S.kfuss} %`, T.kirche);
+  row(`Personalsteuer (${R.verh?"2 × ":""}CHF 24)`, T.personal);
+  row("Total Staats- und Gemeindesteuern", T.kanton+T.gemeinde+T.kirche+T.personal, "sum");
+  h("Direkte Bundessteuer");
+  row("Steuerbares Einkommen (Ziffer 27), auf 100 abgerundet", R.stB);
+  row("Tarif", fam ? "Tarif für Verheiratete und Alleinerziehende (Art. 36 Abs. 2 DBG)" : "Grundtarif (Art. 36 Abs. 1 DBG)");
+  const vor=TX.bundTarif(R.stB, fam);
+  row("Steuer gemäss Tarif", vor);
+  if(fam && kids) row(`Elterntarif: Ermässigung ${kids} × CHF 263`, -Math.min(vor, 263*kids));
+  row("Direkte Bundessteuer", T.bund, "sum");
+  h("Total");
+  row("Total geschätzte Steuern", T.total, "grand");
+  if(R.vst>0) row("Rückforderung Verrechnungssteuer (wird gutgeschrieben)", R.vst);
 }
 
 function renderDocs(){
@@ -263,15 +475,15 @@ function download(name, text, type){
 $("csv").addEventListener("click",()=>{
   const q=s=>{ s=String(s??""); return /[;"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; };
   const lines=[["Ziffer","Bezeichnung","Staatssteuer CHF","Bundessteuer CHF"]];
-  for(const r of R.rows) lines.push([r.z,r.l,Math.round(r.s),r.b==null?"":Math.round(r.b)]);
+  for(const r of buildForm()){ if(r.kind==="page"){ lines.push([]); lines.push(["",r.l]); continue; } if(r.kind==="head"){ lines.push([r.z,r.l]); continue; } lines.push([r.z,r.l,Math.round(r.s||0),r.staat?"":Math.round(r.b||0)]); }
   lines.push([]); const T=R.T;
-  for(const [l,v] of [["Staatssteuer",T.kanton],["Gemeindesteuer",T.gemeinde],["Kirchensteuer",T.kirche],["Personalsteuer",T.personal],["Direkte Bundessteuer",T.bund],["Total",T.total]]) lines.push(["",l,Math.round(v),""]);
+  for(const [l,v] of [["Einfache Staatssteuer",T.einf],["Staatssteuer",T.kanton],["Gemeindesteuer",T.gemeinde],["Kirchensteuer",T.kirche],["Personalsteuer",T.personal],["Direkte Bundessteuer",T.bund],["Total",T.total]]) lines.push(["",l,Math.round(v),""]);
   download(`taxflix-${S.year}.csv`, "﻿"+lines.map(r=>r.map(q).join(";")).join("\n"), "text/csv");
 });
 $("json").addEventListener("click",()=>{
   const T=R.T;
   download(`taxflix-${S.year}.json`, JSON.stringify({ steuerperiode:S.year, kanton:"ZH",
-    ziffern:R.rows.map(r=>({ziffer:r.z, bezeichnung:r.l, staatssteuer:Math.round(r.s), bundessteuer:r.b==null?null:Math.round(r.b)})),
+    ziffern:buildForm().filter(r=>r.kind!=="page"&&r.kind!=="head").map(r=>({ziffer:r.z, bezeichnung:r.l, staatssteuer:Math.round(r.s||0), bundessteuer:r.staat?null:Math.round(r.b||0)})),
     steuern:{staat:Math.round(T.kanton), gemeinde:Math.round(T.gemeinde), kirche:Math.round(T.kirche), personal:T.personal, bund:Math.round(T.bund), total:Math.round(T.total)}}, null, 2), "application/json");
 });
 $("print").addEventListener("click",()=>window.print());

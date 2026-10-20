@@ -297,15 +297,15 @@ window.TX = (function () {
 
     const rows = [];
     // Zeile: Ziffer, Bezeichnung, Staatssteuer, Bundessteuer, Art (wert | summe | total | info), Abschnitt
-    const R = (z, l, s, b, kind, sec, note) => { rows.push({ z, l, s, b: b === undefined ? s : b, kind: kind || "wert", sec, note }); return { s, b: b === undefined ? s : b }; };
+    const R = (z, l, s, b, kind, sec, note, p) => { rows.push({ z, l, s, b: b === undefined ? s : b, kind: kind || "wert", sec, note, p }); return { s, b: b === undefined ? s : b }; };
     const nameP = p => np === 2 ? " · " + personName(S, p) : "";
 
     // Seite 2: Einkünfte
     const sec1 = "Einkünfte (Seite 2)";
     let ein = 0;
-    for (const x of P) if (x.lohn) { R("1.1", "Haupterwerb" + nameP(x.p), x.lohn, x.lohn, "wert", sec1); ein += x.lohn; }
-    for (const x of P) if (x.neben) { R("1.2", "Nebenerwerb" + nameP(x.p), x.neben, x.neben, "wert", sec1); ein += x.neben; }
-    for (const x of P) if (x.selbst) { R("2.1", "Selbständige Erwerbstätigkeit" + nameP(x.p), x.selbst, x.selbst, "wert", sec1); ein += x.selbst; }
+    for (const x of P) if (x.lohn) { R("1.1", "Haupterwerb" + nameP(x.p), x.lohn, x.lohn, "wert", sec1, "", x.p); ein += x.lohn; }
+    for (const x of P) if (x.neben) { R("1.2", "Nebenerwerb" + nameP(x.p), x.neben, x.neben, "wert", sec1, "", x.p); ein += x.neben; }
+    for (const x of P) if (x.selbst) { R("2.1", "Selbständige Erwerbstätigkeit" + nameP(x.p), x.selbst, x.selbst, "wert", sec1, "", x.p); ein += x.selbst; }
     const e31 = tot("ahv_rente"), e32 = tot("pk_rente"), e33 = tot("alv"), e34 = tot("taggelder");
     if (e31) { R("3.1", "AHV-/IV-Renten (100 %)", e31, e31, "wert", sec1); ein += e31; }
     if (e32) { R("3.2", "Renten / Pensionen", e32, e32, "wert", sec1); ein += e32; }
@@ -384,7 +384,9 @@ window.TX = (function () {
     const T = taxes(S, stE, stB, verm);
     const T2 = taxes(S, stE + 1000, stB + 1000, verm);
     const grenz = (T2.total - T.total) / 1000;
-    return { y, Z, P, rows, ein, stE, stB, verm, T, grenz, versAkt, capS, vst: tot("verrechnungssteuer"), np, verh, kids };
+    const raw = { e25s: rS - soS, e25b: rB - soB, v33, v34, v35: v33 - v34, liegBrutto, liegUnt, lower };
+    const wert = { bank: tot("bankguthaben"), depot: tot("wertschriften_wert"), ertrag: e41 };
+    return { y, Z, P, rows, ein, stE, stB, verm, T, grenz, versAkt, capS, capB, ohneVorsorge, raw, wert, vst: tot("verrechnungssteuer"), np, verh, kids, kidsU14 };
   }
 
   /* ---------- Haushalt aus den Belegen ableiten ---------- */
@@ -536,6 +538,6 @@ window.TX = (function () {
     return S;
   }
 
-  return { CASE, STATUS, stateFromRow, loadCase, saveCase, setCaseStatus, typeName, rebuild, ZH, BUND, S3A_PK, GEMEINDEN, KEYS, DOCTYPES, emptyState, normalize, loadState, saveState, CLOUD,
+  return { bundTarif, CASE, STATUS, stateFromRow, loadCase, saveCase, setCaseStatus, typeName, rebuild, ZH, BUND, S3A_PK, GEMEINDEN, KEYS, DOCTYPES, emptyState, normalize, loadState, saveState, CLOUD,
     nf, nf2, chf, clamp, married, nPersons, personName, valueOf, setValue, checklist, calc, taxes, uid };
 })();
