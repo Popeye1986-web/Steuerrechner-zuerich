@@ -49,6 +49,15 @@ p{margin:0}
 .save{font-size:13px}
 .save.bad{color:var(--bad)}
 
+@media (max-width:640px){
+  .top .page{padding-block:10px;gap:8px 12px;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center}
+  .top .steps{grid-column:1/-1;order:3;overflow-x:auto}
+  .top .steps:has(li:only-child){display:none}
+  .top .account{order:2;justify-self:end}
+  .account #who,.account .save{display:none}
+  .steps a{padding:0 10px;font-size:14px}
+}
+
 /* Bausteine */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:0 16px;border-radius:8px;border:1px solid var(--line);background:var(--sheet);color:var(--ink);font-weight:600;font-size:15px;cursor:pointer;text-decoration:none;transition:background .15s,border-color .15s,box-shadow .15s}
 .btn:hover{border-color:#b9c4d2;color:var(--ink);box-shadow:0 1px 2px rgba(14,26,43,.06)}

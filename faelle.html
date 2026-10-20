@@ -32,6 +32,18 @@ td.when{white-space:nowrap}
 td.amt{font-variant-numeric:tabular-nums;white-space:nowrap}
 td.acts{white-space:nowrap;text-align:right}
 td.acts .btn{margin-left:4px}
+@media (max-width:760px){
+  .tablebox table{min-width:0}
+  .tablebox thead{display:none}
+  .tablebox tbody,.tablebox tr,.tablebox td{display:block}
+  .tablebox tbody tr{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;padding:16px;border-bottom:1px solid var(--line)}
+  .tablebox tbody tr:hover td{background:none}
+  .tablebox td{padding:0;border:0;text-align:left!important}
+  .tablebox td[data-label]::before{content:attr(data-label);display:block;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:2px}
+  .tablebox td.first,.tablebox td.acts{grid-column:1/-1}
+  .tablebox td.acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .tablebox td.acts .btn{margin-left:0}
+}
 .newcase{padding:20px;display:flex;flex-direction:column;gap:14px;margin-bottom:20px}
 .newcase .row{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1.4fr) 140px auto;gap:12px;align-items:end}
 @media (max-width:760px){.newcase .row{grid-template-columns:minmax(0,1fr)}}
@@ -148,14 +160,14 @@ function render(){
       try{ await SP.deleteFall(r.id); ROWS=ROWS.filter(x=>x.id!==r.id); render(); toast("Fall gelöscht"); }catch(_){ toast("Löschen fehlgeschlagen"); }
     });
     tb.append(el("tr",{},
-      el("td",{}, el("b",{text:r.kunde_name}), el("span",{class:"sub",text:r.kunde_email})),
-      el("td",{class:"num",text:String(r.jahr)}),
-      el("td",{}, el("span",{class:"pill "+st.c,text:st.t})),
-      el("td",{}, r.bezahlt ? el("span",{class:"pill ok",text:"✓ "+(r.betrag_chf!=null?TX.chf(r.betrag_chf):"")}) : el("span",{class:"muted",text:"–"})),
-      el("td",{class:"r amt",text:String(s.docs)}),
-      el("td",{class:"r amt",style:s.missing?"color:var(--warn)":"color:var(--muted)",text:String(s.missing)}),
-      el("td",{class:"r amt",text:s.total==null?"–":TX.chf(s.total)}),
-      el("td",{class:"muted when",text:ago(r.updated_at)}),
+      el("td",{class:"first"}, el("b",{text:r.kunde_name}), el("span",{class:"sub",text:r.kunde_email})),
+      el("td",{class:"num","data-label":"Jahr",text:String(r.jahr)}),
+      el("td",{"data-label":"Status"}, el("span",{class:"pill "+st.c,text:st.t})),
+      el("td",{"data-label":"Bezahlt"}, r.bezahlt ? el("span",{class:"pill ok",text:"✓ "+(r.betrag_chf!=null?TX.chf(r.betrag_chf):"")}) : el("span",{class:"muted",text:"–"})),
+      el("td",{class:"r amt","data-label":"Belege",text:String(s.docs)}),
+      el("td",{class:"r amt","data-label":"Fehlt",style:s.missing?"color:var(--warn)":"color:var(--muted)",text:String(s.missing)}),
+      el("td",{class:"r amt","data-label":"Geschätzte Steuer",text:s.total==null?"–":TX.chf(s.total)}),
+      el("td",{class:"muted when","data-label":"Geändert",text:ago(r.updated_at)}),
       el("td",{class:"acts"},
         el("a",{class:"btn small",href:"upload.html?fall="+r.id,text:"Belege"}),
         el("a",{class:"btn small",href:"ergebnis.html?fall="+r.id,text:"Ergebnis"}),
