@@ -50,6 +50,7 @@ input.bad{border-color:var(--bad)}
       <ul class="incl">
         <li><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>Ausgefüllte Steuererklärung Kanton Zürich als PDF per E-Mail, mit allen Ziffern und Feldcodes</li>
         <li><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>Prüfung aller Belege durch eine Fachperson</li>
+        <li><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>Elektronische Einreichung beim Steueramt</li>
         <li><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>Alle Abzüge, die Ihnen zustehen</li>
       </ul>
       <form class="contact" id="contact" novalidate>
@@ -95,7 +96,7 @@ function showDone(r, info){
     t.append(info && info.mail===false ? "Ihre ausgefüllte Steuererklärung schicken wir in Kürze an " : "Ihre ausgefüllte Steuererklärung ist unterwegs an ", b, ". Bitte bewahren Sie das PDF mit Ihren Belegen auf.");
     mc.append(t);
   }
-  add("p","muted","Wir prüfen jetzt Ihre Belege und melden uns, falls etwas fehlt. Keine E-Mail erhalten? Schauen Sie bitte auch im Spam-Ordner nach.");
+  add("p","muted","Wir prüfen jetzt Ihre Belege, reichen Ihre Steuererklärung elektronisch beim Steueramt ein und melden uns, falls etwas fehlt. Keine E-Mail erhalten? Schauen Sie bitte auch im Spam-Ordner nach.");
   add("p","muted","Sie können diese Seite schliessen.");
 }
 
