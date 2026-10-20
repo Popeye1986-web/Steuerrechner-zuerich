@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Steuerfälle · taxflix</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="styles.css">
+<style>
+body.pending main{visibility:hidden}
+.intro{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;padding-block:36px 24px}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width:760px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.kpi{padding:16px 18px;display:flex;flex-direction:column;gap:6px;text-align:left;cursor:pointer;border:1px solid var(--line-soft);background:var(--sheet);border-radius:var(--r);color:var(--ink);font:inherit}
+.kpi:hover{border-color:#555}
+.kpi[aria-pressed="true"]{border-color:var(--red);background:linear-gradient(160deg,#2a0d10,var(--sheet) 70%)}
+.kpi .v{font-family:var(--f-num);font-size:32px;line-height:1;letter-spacing:-.03em}
+.kpi .s{font-size:13.5px;color:var(--muted)}
+.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:24px}
+.tools .field{flex:1 1 260px}
+.tools select{width:auto}
+.tablebox{overflow-x:auto;margin-top:14px}
+table{border-collapse:collapse;width:100%;min-width:960px;font-size:15px}
+thead th{text-align:left;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:12px 14px;border-bottom:1px solid var(--line)}
+th.r,td.r{text-align:right}
+td{padding:12px 14px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+tbody tr:hover td{background:#191919}
+td .sub{display:block;font-size:13.5px;color:var(--muted)}
+td.amt{font-family:var(--f-num);white-space:nowrap}
+td.acts{white-space:nowrap;text-align:right}
+td.acts .btn{margin-left:4px}
+.newcase{padding:20px;display:flex;flex-direction:column;gap:14px;margin-bottom:20px}
+.newcase .row{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1.4fr) 140px auto;gap:12px;align-items:end}
+@media (max-width:760px){.newcase .row{grid-template-columns:minmax(0,1fr)}}
+.invite{padding:16px;border:1px solid #24412d;background:var(--ok-soft);border-radius:var(--r);display:flex;flex-direction:column;gap:10px}
+.invite pre{margin:0;white-space:pre-wrap;font-family:var(--f-body);font-size:15px;color:var(--ink);background:var(--bg);border-radius:4px;padding:12px}
+.msg{font-size:14.5px}
+.msg.bad{color:var(--bad)}
+</style>
+</head>
+<body class="pending">
+<header class="top">
+  <div class="page">
+    <a class="wordmark" href="faelle.html" aria-label="taxflix">tax<b>flix</b></a>
+    <ol class="steps" aria-label="Navigation"><li><a href="faelle.html" aria-current="page">Steuerfälle</a></li></ol>
+    <div class="account"><span id="who"></span><button class="btn small" id="logout" type="button">Abmelden</button></div>
+  </div>
+</header>
+
+<main class="page">
+  <div class="intro">
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <span class="label">Prüferansicht</span>
+      <h1>Steuerfälle</h1>
+    </div>
+    <button class="btn primary" id="newBtn" type="button">Neuer Fall</button>
+  </div>
+
+  <div class="notice warn" id="noAccess" hidden style="margin-bottom:16px">Dieses Konto ist kein Prüfer-Konto. Trag deine E-Mail in Supabase als Prüfer ein (siehe README, faelle.sql).</div>
+
+  <section class="card newcase" id="newCase" hidden aria-labelledby="h-new">
+    <h2 id="h-new">Neuen Steuerfall eröffnen</h2>
+    <form id="newForm" novalidate>
+      <div class="row">
+        <div class="field"><label for="nName">Name des Kunden</label><input id="nName" type="text" autocomplete="off" placeholder="z.B. Anna und Marco Meier"></div>
+        <div class="field"><label for="nEmail">E-Mail des Kunden</label><input id="nEmail" type="email" autocomplete="off" placeholder="anna.meier@example.ch"></div>
+        <div class="field"><label for="nYear">Steuerjahr</label><select id="nYear"><option value="2025">2025</option><option value="2026">2026</option></select></div>
+        <button class="btn primary" type="submit" id="nSubmit">Fall eröffnen</button>
+      </div>
+      <p class="note">Der Kunde erstellt mit genau dieser E-Mail ein Konto und sieht dann nur diesen Fall.</p>
+      <p class="msg" id="nMsg" role="status"></p>
+    </form>
+    <div class="invite" id="invite" hidden>
+      <b>Fall eröffnet. Schicken Sie dem Kunden diese Einladung:</b>
+      <pre id="inviteText"></pre>
+      <div class="row" style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" type="button" id="copyInvite">Text kopieren</button>
+        <a class="btn primary" id="openNew" href="#">Fall öffnen</a>
+      </div>
+    </div>
+  </section>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="tools">
+    <div class="field"><label for="q" style="position:absolute;left:-9999px">Suchen</label><input id="q" type="text" placeholder="Kunde oder E-Mail suchen"></div>
+    <select id="fYear" aria-label="Steuerjahr"><option value="">Alle Jahre</option><option value="2025">2025</option><option value="2026">2026</option></select>
+  </div>
+
+  <div class="card tablebox">
+    <table>
+      <thead><tr><th>Kunde</th><th>Jahr</th><th>Status</th><th>Bezahlt</th><th class="r">Belege</th><th class="r">Fehlt</th><th class="r">Geschätzte Steuer</th><th>Geändert</th><th class="r"><span style="position:absolute;left:-9999px">Aktionen</span></th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+</main>
+
+<footer class="foot"><div class="page"><span>taxflix · Kein Angebot des Kantonalen Steueramts Zürich</span></div></footer>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script src="taxcore.js"></script>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+let ROWS=[], FILTER="", lastCreated=null;
+function el(tag, attrs, ...kids){ const e=document.createElement(tag); for(const [k,v] of Object.entries(attrs||{})){ if(v==null||v===false) continue; if(k==="class") e.className=v; else if(k==="text") e.textContent=v; else if(k.startsWith("on")) e.addEventListener(k.slice(2),v); else e.setAttribute(k, v===true?"":v); } for(const c of kids) if(c!=null) e.append(c); return e; }
+function toast(t){ const e=$("toast"); e.textContent=t; e.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>e.hidden=true,2400); }
+const validEmail = v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+function ago(ts){ const d=(Date.now()-new Date(ts).getTime())/1000; if(d<60) return "gerade eben"; if(d<3600) return `vor ${Math.round(d/60)} Min.`; if(d<86400) return `vor ${Math.round(d/3600)} Std.`; if(d<172800) return "gestern"; return new Date(ts).toLocaleDateString("de-CH"); }
+
+function summarize(row){
+  const S=TX.stateFromRow(row); TX.rebuild(S);
+  const hasVals=S.items.some(i=>+i.amount>0);
+  const R=hasVals?TX.calc(S):null;
+  return { docs:S.docs.length, missing:(S.derived&&S.derived.missing||[]).length, total:R?R.T.total:null };
+}
+function inviteText(r){
+  const link=location.origin+location.pathname.replace(/[^/]*$/,"")+"login.html?email="+encodeURIComponent(r.kunde_email);
+  return `Guten Tag ${r.kunde_name}\n\nFür Ihre Steuererklärung ${r.jahr} können Sie Ihre Belege ab sofort online bei taxflix hochladen:\n${link}\n\nBitte erstellen Sie dort ein Konto mit dieser E-Mail-Adresse: ${r.kunde_email}\nLaden Sie dann einfach alle Belege hoch, die Sie haben. Wir melden uns, sobald wir alles geprüft haben.\n\nFreundliche Grüsse`;
+}
+async function copy(text){ try{ await navigator.clipboard.writeText(text); toast("Kopiert"); }catch(_){ toast("Kopieren nicht möglich, bitte Text markieren"); } }
+
+function render(){
+  // Kennzahlen
+  const counts={offen:0,eingereicht:0,pruefung:0,abgeschlossen:0};
+  for(const r of ROWS) counts[r.status]=(counts[r.status]||0)+1;
+  const sub={offen:"Noch nicht bezahlt",eingereicht:"Bezahlt, neu zu prüfen",pruefung:"Gerade in Arbeit",abgeschlossen:"Fertig"};
+  $("kpis").replaceChildren(...Object.keys(counts).map(k=>el("button",{class:"kpi",type:"button","aria-pressed":String(FILTER===k),onclick:()=>{FILTER=FILTER===k?"":k; render();}},
+    el("span",{class:"label",text:TX.STATUS[k].t}), el("span",{class:"v",text:String(counts[k])}), el("span",{class:"s",text:sub[k]}))));
+  // Tabelle
+  const q=$("q").value.trim().toLowerCase(), y=$("fYear").value;
+  const list=ROWS.filter(r=>(!FILTER||r.status===FILTER) && (!y||String(r.jahr)===y) && (!q||(r.kunde_name+" "+r.kunde_email).toLowerCase().includes(q)));
+  const tb=$("rows"); tb.replaceChildren();
+  if(!ROWS.length){ tb.append(el("tr",{}, el("td",{colspan:"9",class:"muted",style:"padding:32px 14px;text-align:center",text:"Noch keine Steuerfälle. Eröffnen Sie mit «Neuer Fall» den ersten."}))); return; }
+  if(!list.length){ tb.append(el("tr",{}, el("td",{colspan:"9",class:"muted",style:"padding:24px 14px",text:"Keine Fälle für diesen Filter."}))); return; }
+  for(const r of list){
+    const st=TX.STATUS[r.status]||TX.STATUS.offen, s=r._sum;
+    let armed=false;
+    const del=el("button",{class:"btn ghost small",type:"button",text:"Löschen","aria-label":"Fall löschen: "+r.kunde_name});
+    del.addEventListener("click",async()=>{
+      if(!armed){ armed=true; del.textContent="Wirklich löschen?"; setTimeout(()=>{armed=false; del.textContent="Löschen";},4000); return; }
+      try{ await SP.deleteFall(r.id); ROWS=ROWS.filter(x=>x.id!==r.id); render(); toast("Fall gelöscht"); }catch(_){ toast("Löschen fehlgeschlagen"); }
+    });
+    tb.append(el("tr",{},
+      el("td",{}, el("b",{text:r.kunde_name}), el("span",{class:"sub",text:r.kunde_email})),
+      el("td",{class:"num",text:String(r.jahr)}),
+      el("td",{}, el("span",{class:"pill "+st.c,text:st.t})),
+      el("td",{}, r.bezahlt ? el("span",{class:"pill ok",text:"✓ "+(r.betrag_chf!=null?TX.chf(r.betrag_chf):"")}) : el("span",{class:"muted",text:"–"})),
+      el("td",{class:"r amt",text:String(s.docs)}),
+      el("td",{class:"r amt",style:s.missing?"color:var(--warn)":"color:var(--muted)",text:String(s.missing)}),
+      el("td",{class:"r amt",text:s.total==null?"–":TX.chf(s.total)}),
+      el("td",{class:"muted",text:ago(r.updated_at)}),
+      el("td",{class:"acts"},
+        el("a",{class:"btn small",href:"upload.html?fall="+r.id,text:"Belege"}),
+        el("a",{class:"btn small",href:"ergebnis.html?fall="+r.id,text:"Ergebnis"}),
+        el("button",{class:"btn ghost small",type:"button",text:"Einladung",onclick:()=>copy(inviteText(r))}),
+        del)));
+  }
+}
+
+$("newBtn").addEventListener("click",()=>{ const n=$("newCase"); n.hidden=!n.hidden; if(!n.hidden){ $("invite").hidden=true; $("nName").focus(); } });
+$("q").addEventListener("input",render); $("fYear").addEventListener("change",render);
+$("copyInvite").addEventListener("click",()=>copy($("inviteText").textContent));
+$("newForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const name=$("nName").value.trim(), email=$("nEmail").value.trim(), jahr=+$("nYear").value, msg=$("nMsg");
+  msg.className="msg bad";
+  if(!name){ msg.textContent="Bitte den Namen des Kunden eingeben."; $("nName").focus(); return; }
+  if(!validEmail(email)){ msg.textContent="Bitte eine gültige E-Mail-Adresse eingeben."; $("nEmail").focus(); return; }
+  if(ROWS.some(r=>r.kunde_email===email.toLowerCase() && r.jahr===jahr)){ msg.textContent=`Für ${email} gibt es schon einen Fall ${jahr}.`; return; }
+  $("nSubmit").disabled=true; msg.textContent="";
+  try{
+    const r=await SP.createFall({name,email,jahr}); r._sum=summarize(r); ROWS.unshift(r); lastCreated=r;
+    $("inviteText").textContent=inviteText(r); $("openNew").href="upload.html?fall="+r.id; $("invite").hidden=false;
+    $("nName").value=""; $("nEmail").value=""; render();
+  }catch(err){ msg.textContent="Fall konnte nicht eröffnet werden. Ist dein Konto als Prüfer eingetragen?"; }
+  $("nSubmit").disabled=false;
+});
+$("logout").addEventListener("click",()=>SP.logout());
+
+(async function boot(){
+  if(!SP.configured || !SP.client){ document.body.classList.remove("pending"); $("noAccess").textContent="Login ist nicht eingerichtet. Bitte config.js prüfen."; $("noAccess").hidden=false; return; }
+  const user=await SP.requireUser();
+  $("who").textContent=user.email||"";
+  if(!(await SP.isPruefer())){ location.replace("kunde.html"); return; }
+  try{ ROWS=await SP.listFaelle(); for(const r of ROWS) r._sum=summarize(r); }
+  catch(_){ $("noAccess").textContent="Fälle konnten nicht geladen werden. Wurde faelle.sql in Supabase ausgeführt?"; $("noAccess").hidden=false; }
+  document.body.classList.remove("pending");
+  render();
+})();
+</script>
+</body>
+</html>

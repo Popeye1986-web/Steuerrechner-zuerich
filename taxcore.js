@@ -162,6 +162,47 @@ window.TX = (function () {
     try { localStorage.setItem(STORE, JSON.stringify(S)); status("local"); } catch (_) {}
   }
 
+  /* ---------- Steuerfälle ---------- */
+  const CASE = { id: null, row: null, timer: null };
+  const STATUS = {
+    offen: { t: "Wartet auf Belege", c: "warn" },
+    eingereicht: { t: "Eingereicht", c: "red" },
+    pruefung: { t: "In Prüfung", c: "mute" },
+    abgeschlossen: { t: "Abgeschlossen", c: "ok" }
+  };
+  function stateFromRow(row) {
+    const S = normalize(row.data && row.data.persons ? row.data : null) || emptyState(row.jahr);
+    S.overrides = S.overrides || { persons: [{}, {}], ausbildung: {} };
+    S.overrides.year = row.jahr; S.year = row.jahr;
+    return S;
+  }
+  // Lädt den Fall aus ?fall=… und prüft die Anmeldung
+  async function loadCase() {
+    const user = await SP.requireUser();
+    const pruefer = await SP.isPruefer();
+    const id = new URLSearchParams(location.search).get("fall") || "";
+    if (!/^[0-9a-f-]{36}$/.test(id)) return { error: "nofall", user, pruefer };
+    const row = await SP.loadFall(id);
+    if (!row) return { error: "notfound", user, pruefer };
+    CASE.id = id; CASE.row = row;
+    return { state: stateFromRow(row), fall: row, user, pruefer };
+  }
+  function saveCase(S, onStatus) {
+    const status = onStatus || function () {};
+    if (!CASE.id) return;
+    status("saving");
+    clearTimeout(CASE.timer);
+    CASE.timer = setTimeout(async () => {
+      try { const r = await SP.saveFall(CASE.id, { data: S }); if (r) CASE.row.status = r.status; status("saved"); }
+      catch (e) { status("error"); }
+    }, 700);
+  }
+  async function setCaseStatus(status) {
+    const r = await SP.saveFall(CASE.id, { status });
+    if (r) CASE.row.status = r.status;
+    return CASE.row.status;
+  }
+
   /* ---------- Hilfen ---------- */
   const nf = new Intl.NumberFormat("de-CH", { maximumFractionDigits: 0 });
   const nf2 = new Intl.NumberFormat("de-CH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -444,6 +485,7 @@ window.TX = (function () {
     if (O.kfuss != null) { S.kfuss = O.kfuss; kfussSrc = "Ihre Angabe"; }
     else if (st.steuerfuss_kirche != null && st.steuerfuss_kirche !== "") { S.kfuss = +st.steuerfuss_kirche || 0; kfussSrc = "Steuerrechnung"; }
     else if (st.konfession === "keine") { S.kfuss = 0; kfussSrc = "Steuerrechnung"; }
+    else if (O.konfession === "keine") { S.kfuss = 0; kfussSrc = "Ihre Angabe"; }
     else { S.kfuss = 0; }
 
     // 6. Situation für die Belegliste
@@ -472,7 +514,7 @@ window.TX = (function () {
     const q = [];
     if (!O.zivil && !zivilAuto) q.push({ id: "zivil", text: `Sind ${adults[0] ? adults[0].vorname : "Sie"} und ${adults[1] ? adults[1].vorname : "die zweite Person"} verheiratet?`, why: "Unverheiratete Paare machen je eine eigene Steuererklärung." });
     if (!gfussSrc) q.push({ id: "gfuss", text: S.gemeindeName ? `Wie hoch ist der Steuerfuss von ${S.gemeindeName}?` : "In welcher Gemeinde wohnen Sie, und wie hoch ist der Steuerfuss?", why: "Steht auf Ihrer letzten Steuerrechnung oder unter zh.ch/steuerfuesse." });
-    if (!kfussSrc) q.push({ id: "kirche", text: "Sind Sie Mitglied einer Landeskirche?", why: "Für die Kirchensteuer. Steht auf der letzten Steuerrechnung." });
+    if (!kfussSrc) q.push({ id: "kirche", text: O.konfession ? `Wie hoch ist der Kirchensteuerfuss (${O.konfession})?` : "Sind Sie Mitglied einer Landeskirche?", why: "Für die Kirchensteuer. Steht auf der letzten Steuerrechnung." });
     for (let i = 0; i < np; i++) if (S.persons[i].weg === "offen") q.push({ id: "weg" + i, person: i, text: `Wie kommt ${S.persons[i].name.split(" ")[0]} zur Arbeit?`, why: "Für den Fahrkostenabzug. Mit ÖV-Abo einfach die Quittung hochladen." });
     for (const k of kidList) if (k.age != null && k.age >= 18 && k.age < 26 && O.ausbildung[k.name] == null) q.push({ id: "ausb:" + k.name, kid: k.name, text: `Ist ${k.name.split(" ")[0]} (${k.age}) noch in Ausbildung?`, why: "Dann gibt es den Kinderabzug weiterhin." });
 
@@ -494,6 +536,6 @@ window.TX = (function () {
     return S;
   }
 
-  return { typeName, rebuild, ZH, BUND, S3A_PK, GEMEINDEN, KEYS, DOCTYPES, emptyState, normalize, loadState, saveState, CLOUD,
+  return { CASE, STATUS, stateFromRow, loadCase, saveCase, setCaseStatus, typeName, rebuild, ZH, BUND, S3A_PK, GEMEINDEN, KEYS, DOCTYPES, emptyState, normalize, loadState, saveState, CLOUD,
     nf, nf2, chf, clamp, married, nPersons, personName, valueOf, setValue, checklist, calc, taxes, uid };
 })();

@@ -49,6 +49,10 @@ td.amt{font-family:var(--f-num);font-variant-numeric:tabular-nums;white-space:no
 .copy.done{border-color:var(--ok);color:var(--ok)}
 .docs{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px}
 .docs li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:var(--sheet);border:1px solid var(--line-soft);border-radius:4px;font-size:15px}
+.casebar{margin-top:24px;padding:14px 18px;display:flex;flex-wrap:wrap;align-items:center;gap:10px 20px}
+.casebar .who{flex:1 1 260px;min-width:0;display:flex;flex-direction:column}
+.casebar .who b{font-size:17px}
+.casebar select{width:auto}
 .howto{padding:20px;display:flex;flex-direction:column;gap:10px}
 .howto ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;color:var(--info)}
 @media print{ .hero{grid-template-columns:1fr 1fr} .total{background:#fff} thead th{position:static} tr.total td{background:#eee} tr.total td.r{color:#000} .copy{display:none} }
@@ -57,10 +61,11 @@ td.amt{font-family:var(--f-num);font-variant-numeric:tabular-nums;white-space:no
 <body class="pending">
 <header class="top">
   <div class="page">
-    <a class="wordmark" href="upload.html" aria-label="taxflix">tax<b>flix</b></a>
-    <ol class="steps" aria-label="Schritte">
-      <li><a href="upload.html"><span class="n">1</span>Belege</a></li>
-      <li><a href="ergebnis.html" aria-current="page"><span class="n">2</span>Ergebnis</a></li>
+    <a class="wordmark" href="faelle.html" aria-label="taxflix">tax<b>flix</b></a>
+    <ol class="steps" aria-label="Navigation">
+      <li><a href="faelle.html">Steuerfälle</a></li>
+      <li><a href="#" id="navUpload"><span class="n">1</span>Belege</a></li>
+      <li><a href="#" id="navResult" aria-current="page"><span class="n">2</span>Ergebnis</a></li>
     </ol>
     <div class="account">
       <span id="who"></span>
@@ -70,6 +75,7 @@ td.amt{font-family:var(--f-num);font-variant-numeric:tabular-nums;white-space:no
 </header>
 
 <main class="page" id="main">
+  <div class="card casebar noprint" id="caseBar"></div>
   <div class="intro">
     <div style="display:flex;flex-direction:column;gap:10px">
       <span class="label" id="sub"></span>
@@ -85,7 +91,7 @@ td.amt{font-family:var(--f-num);font-variant-numeric:tabular-nums;white-space:no
   <div id="empty" class="card empty" hidden>
     <h2>Noch keine Werte erfasst</h2>
     <p class="muted">Laden Sie zuerst Ihre Belege hoch oder tragen Sie die Beträge ein. Danach erscheint hier Ihre Auswertung.</p>
-    <a class="btn primary" href="upload.html">Zu den Belegen</a>
+    <a class="btn primary" href="#" id="emptyLink">Zu den Belegen</a>
   </div>
 
   <div id="content" hidden>
@@ -271,10 +277,20 @@ $("json").addEventListener("click",()=>{
 $("print").addEventListener("click",()=>window.print());
 
 (async function boot(){
-  const { state, user } = await TX.loadState();
-  S=state; TX.rebuild(S);
-  if(user){ $("who").textContent=user.email||""; $("logout").hidden=false; $("logout").addEventListener("click",()=>SP.logout());
-    SP.client.auth.onAuthStateChange(ev=>{ if(ev==="SIGNED_OUT") location.replace("login.html"); }); }
+  const res = await TX.loadCase();
+  if(!res.pruefer){ location.replace("kunde.html"); return; }
+  if(res.error){ location.replace("faelle.html"); return; }
+  S=res.state; TX.rebuild(S);
+  const row=TX.CASE.row, user=res.user;
+  $("who").textContent=user.email||""; $("logout").hidden=false; $("logout").addEventListener("click",()=>SP.logout());
+  SP.client.auth.onAuthStateChange(ev=>{ if(ev==="SIGNED_OUT") location.replace("login.html"); });
+  $("navUpload").href=$("emptyLink").href="upload.html?fall="+row.id; $("navResult").href="ergebnis.html?fall="+row.id;
+  const sel=el("select",{id:"statusSel","aria-label":"Status des Falls"}); for(const [k,v] of Object.entries(TX.STATUS)) sel.append(el("option",{value:k,text:v.t}));
+  sel.value=row.status;
+  sel.addEventListener("change",async()=>{ try{ await TX.setCaseStatus(sel.value); toast("Status: "+TX.STATUS[sel.value].t); }catch(_){ toast("Status konnte nicht gespeichert werden"); sel.value=row.status; } });
+  $("caseBar").append(el("a",{class:"btn ghost small",href:"faelle.html",text:"← Alle Fälle"}),
+    el("div",{class:"who"}, el("b",{text:row.kunde_name}), el("span",{class:"muted",text:`${row.kunde_email} · Steuerjahr ${row.jahr}`})),
+    el("label",{for:"statusSel",class:"label",text:"Status"}), sel);
   document.body.classList.remove("pending");
   render();
 })();

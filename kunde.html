@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Meine Steuererklärung · taxflix</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="styles.css">
+<style>
+body.pending main{visibility:hidden}
+.intro{display:flex;flex-direction:column;gap:10px;padding-block:40px 24px;max-width:720px}
+.cases{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+.case{padding:22px;display:flex;flex-direction:column;gap:14px;background:linear-gradient(160deg,#2a0d10,var(--sheet) 60%)}
+.case .yr{font-family:var(--f-display);font-size:44px;line-height:1;letter-spacing:-.03em}
+.steps4{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;font-size:15px}
+.steps4 li{display:flex;gap:10px;align-items:center;color:var(--muted)}
+.steps4 li .d{width:22px;height:22px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;font-size:12px;font-family:var(--f-num);flex:none}
+.steps4 li.done{color:var(--ink)} .steps4 li.done .d{background:var(--ok);border-color:var(--ok);color:#0b1a10}
+.steps4 li.now{color:var(--ink);font-weight:600} .steps4 li.now .d{background:var(--red);border-color:var(--red);color:#fff}
+.start{padding:26px;display:flex;flex-direction:column;gap:16px;max-width:620px;background:linear-gradient(160deg,#2a0d10,var(--sheet) 60%)}
+.start form{display:flex;flex-direction:column;gap:14px}
+.start .row{display:grid;grid-template-columns:minmax(0,1fr) 140px;gap:12px}
+@media (max-width:520px){.start .row{grid-template-columns:minmax(0,1fr)}}
+.donebox{padding:32px 26px;display:flex;flex-direction:column;gap:14px;align-items:flex-start;border-color:#24412d;background:linear-gradient(160deg,#10301c,var(--sheet) 70%);margin-bottom:20px}
+.donebox .big{font-family:var(--f-display);font-size:clamp(34px,5vw,52px);line-height:1;letter-spacing:-.03em}
+.more{margin-top:20px}
+.msg.bad{color:var(--bad)}
+</style>
+</head>
+<body class="pending">
+<header class="top">
+  <div class="page">
+    <a class="wordmark" href="kunde.html" aria-label="taxflix">tax<b>flix</b></a>
+    <div class="account"><span id="who"></span><button class="btn small" id="logout" type="button">Abmelden</button></div>
+  </div>
+</header>
+<main class="page">
+  <div class="intro">
+    <span class="label">Willkommen</span>
+    <h1>Ihre Steuererklärung</h1>
+    <p class="muted">Belege hochladen, offene Fragen beantworten, bezahlen. Den Rest erledigen wir.</p>
+  </div>
+  <div id="doneBox"></div>
+  <div id="startBox"></div>
+  <div class="cases" id="cases"></div>
+  <div class="more" id="moreBox"></div>
+</main>
+<footer class="foot"><div class="page"><span>taxflix · Kein Angebot des Kantonalen Steueramts Zürich</span></div></footer>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script src="taxcore.js"></script>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+function el(tag, attrs, ...kids){ const e=document.createElement(tag); for(const [k,v] of Object.entries(attrs||{})){ if(v==null||v===false) continue; if(k==="class") e.className=v; else if(k==="text") e.textContent=v; else if(k.startsWith("on")) e.addEventListener(k.slice(2),v); else e.setAttribute(k, v===true?"":v); } for(const c of kids) if(c!=null) e.append(c); return e; }
+function toast(t){ const e=$("toast"); e.textContent=t; e.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>e.hidden=true,2400); }
+let USER=null, ROWS=[];
+const YEAR_DEFAULT = 2025;
+
+function startForm(title, compact){
+  const name=el("input",{id:"sName",type:"text",autocomplete:"name",placeholder:"Vorname Nachname"});
+  const year=el("select",{id:"sYear"}, el("option",{value:"2025",text:"2025"}), el("option",{value:"2026",text:"2026"}));
+  year.value=String(YEAR_DEFAULT);
+  const used=ROWS.map(r=>r.jahr); if(used.includes(YEAR_DEFAULT)) year.value="2026";
+  const msg=el("p",{class:"msg",role:"status"});
+  const btn=el("button",{class:"btn primary",type:"submit",text:"Steuererklärung starten",style:"min-height:50px"});
+  const form=el("form",{novalidate:true},
+    el("div",{class:"row"},
+      el("div",{class:"field"}, el("label",{for:"sName",text:"Ihr Name"}), name),
+      el("div",{class:"field"}, el("label",{for:"sYear",text:"Steuerjahr"}), year)),
+    el("p",{class:"note",text:"Verheiratete machen eine gemeinsame Steuererklärung. Ein Konto pro Haushalt genügt."}),
+    msg, btn);
+  form.addEventListener("submit",async e=>{
+    e.preventDefault();
+    const n=name.value.trim(), j=+year.value;
+    if(n.length<2){ msg.className="msg bad"; msg.textContent="Bitte Ihren Namen eingeben."; name.focus(); return; }
+    if(ROWS.some(r=>r.jahr===j)){ msg.className="msg bad"; msg.textContent=`Für ${j} haben Sie bereits eine Steuererklärung.`; return; }
+    btn.disabled=true;
+    try{ const r=await SP.createFall({name:n, email:USER.email, jahr:j}); location.href="upload.html?fall="+r.id; }
+    catch(_){ msg.className="msg bad"; msg.textContent="Das hat nicht geklappt. Bitte versuchen Sie es erneut."; btn.disabled=false; }
+  });
+  return el("section",{class:"card start"}, el("h2",{text:title}), form);
+}
+
+function stepIndex(r){
+  if(r.status==="abgeschlossen") return 4;
+  if(r.bezahlt || r.status!=="offen") return 3;
+  const S=TX.stateFromRow(r); return S.docs.length ? 1 : 0;
+}
+function render(){
+  const box=$("cases"); box.replaceChildren(); $("startBox").replaceChildren(); $("moreBox").replaceChildren();
+  if(!ROWS.length){ $("startBox").append(startForm("Steuererklärung starten")); return; }
+  const labels=["Belege hochladen","Fragen beantworten","Bezahlen","Wird geprüft","Abgeschlossen"];
+  for(const r of ROWS){
+    const S=TX.stateFromRow(r), n=S.docs.length, idx=stepIndex(r);
+    const st=el("ol",{class:"steps4"}, ...labels.map((t,i)=>el("li",{class:i<idx?"done":i===idx?"now":null}, el("span",{class:"d",text:i<idx?"✓":String(i+1)}), t)));
+    let action;
+    if(idx<=1) action=el("a",{class:"btn primary",href:"upload.html?fall="+r.id,text:n?"Weiter":"Belege hochladen",style:"min-height:48px"});
+    else action=el("a",{class:"btn",href:"upload.html?fall="+r.id,text:"Belege ansehen"});
+    box.append(el("article",{class:"card case"},
+      el("span",{class:"label",text:"Steuererklärung"}), el("span",{class:"yr",text:String(r.jahr)}),
+      el("span",{class:"muted",text: r.bezahlt ? "Bezahlt · wir prüfen Ihre Unterlagen" : n?`${n} Beleg${n>1?"e":""} hochgeladen`:"Noch keine Belege"}), st, action));
+  }
+  if(ROWS.length<2){
+    const b=el("button",{class:"btn ghost",type:"button",text:"Weitere Steuererklärung starten"});
+    b.addEventListener("click",()=>{ $("moreBox").replaceChildren(startForm("Weitere Steuererklärung")); });
+    $("moreBox").append(b);
+  }
+}
+
+function showDone(r){
+  $("doneBox").replaceChildren(el("section",{class:"card donebox",role:"status"},
+    el("span",{class:"pill ok",text:"Zahlung erhalten"}),
+    el("span",{class:"big",text:"Fertig!"}),
+    el("p",{text:`Danke, ${String(r.kunde_name).split(" ")[0]}. Ihre Belege für ${r.jahr} sind bei uns. Wir prüfen jetzt alles und melden uns per E-Mail, sobald Ihre Steuererklärung bereit ist.`}),
+    el("p",{class:"muted",text:"Sie können diese Seite schliessen."})));
+}
+
+$("logout").addEventListener("click",()=>SP.logout());
+(async function boot(){
+  USER=await SP.requireUser(); $("who").textContent=USER.email||"";
+  if(await SP.isPruefer()){ location.replace("faelle.html"); return; }
+  const p=new URLSearchParams(location.search), sid=p.get("bezahlt"), fid=p.get("fall");
+  try{ ROWS=await SP.listFaelle(); }catch(_){ ROWS=[]; }
+  // Zahlungen bestätigen: nach der Rückkehr von Stripe und für offene Zahlungen
+  let changed=false;
+  for(const r of ROWS){
+    if(r.bezahlt) continue;
+    if((sid && r.id===fid) || r.zahlung_session){
+      try{ const j=await SP.zahlung({action:"pruefen", fall:r.id, session: r.id===fid ? sid : undefined}); if(j.bezahlt) changed=true; }catch(_){}
+    }
+  }
+  if(changed){ try{ ROWS=await SP.listFaelle(); }catch(_){} }
+  if(sid && fid){
+    const r=ROWS.find(x=>x.id===fid);
+    if(r && r.bezahlt) showDone(r);
+    else if(r) $("doneBox").append(el("div",{class:"notice warn",style:"margin-bottom:16px",text:"Die Zahlung wird noch bestätigt. Laden Sie die Seite in einer Minute neu."}));
+    history.replaceState(null,"","kunde.html");
+  }
+  document.body.classList.remove("pending");
+  render();
+  if(ROWS.length===1 && !sid && stepIndex(ROWS[0])===0) location.replace("upload.html?fall="+ROWS[0].id);
+})();
+</script>
+</body>
+</html>

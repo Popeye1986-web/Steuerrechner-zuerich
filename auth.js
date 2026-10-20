@@ -1,4 +1,4 @@
-// Gemeinsame Login- und Speicherfunktionen für alle Seiten.
+// Gemeinsame Funktionen für Login, Rollen und Steuerfälle.
 window.SP = (function () {
   "use strict";
   const cfg = window.STEUERPILOT_CONFIG || {};
@@ -7,8 +7,8 @@ window.SP = (function () {
   const client = configured && window.supabase
     ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey)
     : null;
-  const TABLE = "steuerdaten";
-  const ALLOWED_NEXT = ["upload.html", "ergebnis.html"];
+  const FAELLE = "faelle";
+  const NEXT_OK = /^(faelle|kunde|upload|ergebnis|bezahlen)\.html(\?fall=[0-9a-f-]{36})?$/;
 
   async function getUser() {
     if (!client) return null;
@@ -21,16 +21,26 @@ window.SP = (function () {
     if (!client) return null;
     const user = await getUser();
     if (!user) {
-      const page = location.pathname.split("/").pop() || "upload.html";
+      const page = (location.pathname.split("/").pop() || "faelle.html") + location.search;
       location.replace("login.html?next=" + encodeURIComponent(page));
       return new Promise(() => {});
     }
     return user;
   }
 
-  function nextPage() {
+  let _pruefer = null;
+  async function isPruefer() {
+    if (!client) return false;
+    if (_pruefer !== null) return _pruefer;
+    const { data, error } = await client.rpc("ist_pruefer");
+    _pruefer = !error && data === true;
+    return _pruefer;
+  }
+  async function homePage() { return (await isPruefer()) ? "faelle.html" : "kunde.html"; }
+  async function afterLogin() {
     const n = new URLSearchParams(location.search).get("next");
-    return ALLOWED_NEXT.includes(n) ? n : "upload.html";
+    if (n && NEXT_OK.test(n)) return n;
+    return homePage();
   }
 
   async function logout() {
@@ -38,27 +48,45 @@ window.SP = (function () {
     location.replace("login.html");
   }
 
-  async function load() {
-    const user = await getUser();
-    if (!user) return null;
-    const { data, error } = await client.from(TABLE).select("data").eq("user_id", user.id).maybeSingle();
+  /* ---------- Steuerfälle ---------- */
+  async function listFaelle() {
+    const { data, error } = await client.from(FAELLE).select("id,kunde_name,kunde_email,jahr,status,bezahlt,betrag_chf,zahlung_session,data,created_at,updated_at").order("updated_at", { ascending: false });
     if (error) throw error;
-    return data ? data.data : null;
+    return data || [];
+  }
+  async function createFall(v) {
+    const { data, error } = await client.from(FAELLE).insert({ kunde_name: v.name, kunde_email: v.email.trim().toLowerCase(), jahr: v.jahr }).select().single();
+    if (error) throw error;
+    return data;
+  }
+  async function loadFall(id) {
+    const { data, error } = await client.from(FAELLE).select("*").eq("id", id).maybeSingle();
+    if (error) throw error;
+    return data;
+  }
+  async function saveFall(id, patch) {
+    const { data, error } = await client.from(FAELLE).update(patch).eq("id", id).select("status,updated_at").maybeSingle();
+    if (error) throw error;
+    return data;
+  }
+  async function deleteFall(id) {
+    const { error } = await client.from(FAELLE).delete().eq("id", id);
+    if (error) throw error;
   }
 
-  async function save(state) {
-    const user = await getUser();
-    if (!user) throw new Error("Nicht angemeldet");
-    const { error } = await client.from(TABLE).upsert({ user_id: user.id, data: state, updated_at: new Date().toISOString() });
-    if (error) throw error;
+  // Aufruf der Zahlungsfunktion mit dem Login des Kunden
+  async function zahlung(payload) {
+    const { data } = await client.auth.getSession();
+    const t = data && data.session ? data.session.access_token : "";
+    const r = await fetch("/api/zahlung", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + t }, body: JSON.stringify(payload) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { const e = new Error(j.error || "http"); e.status = r.status; throw e; }
+    return j;
+  }
+  async function zahlungInfo() {
+    try { const r = await fetch("/api/zahlung"); return r.ok ? await r.json() : { configured: false }; } catch (_) { return { configured: false }; }
   }
 
-  async function remove() {
-    const user = await getUser();
-    if (!user) return;
-    const { error } = await client.from(TABLE).delete().eq("user_id", user.id);
-    if (error) throw error;
-  }
-
-  return { configured, client, getUser, requireUser, nextPage, logout, load, save, remove };
+  return { zahlung, zahlungInfo, configured, client, getUser, requireUser, isPruefer, homePage, afterLogin, logout,
+    listFaelle, createFall, loadFall, saveFall, deleteFall };
 })();

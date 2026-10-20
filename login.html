@@ -71,7 +71,7 @@ form{display:flex;flex-direction:column;gap:16px}
   <aside class="side" aria-label="taxflix">
     <a class="brand" href="index.html"><span class="wordmark">tax<b>flix</b></span></a>
     <div style="display:flex;flex-direction:column;gap:28px">
-      <h2>Ihre Steuererklärung wartet dort, wo Sie aufgehört haben.</h2>
+      <h2>Belege hochladen, bezahlen, fertig. Ihre Steuererklärung Zürich.</h2>
       <ul class="ledger" aria-label="Beispiel für erkannte Werte">
         <li><span class="z">1.1</span><span>Nettolohn</span><span class="v">92 400</span></li>
         <li><span class="z">4.1</span><span>Ertrag Wertschriften</span><span class="v">420</span></li>
@@ -88,7 +88,6 @@ form{display:flex;flex-direction:column;gap:16px}
       <div class="setup" id="setup" hidden>
         <strong>Login ist noch nicht eingerichtet</strong>
         <span>Tragen Sie in <code>config.js</code> die Project URL und den anon key aus Supabase ein.</span>
-        <a href="upload.html">Ohne Login weiter (Daten nur in diesem Browser)</a>
       </div>
 
       <!-- Anmelden und Registrieren -->
@@ -183,7 +182,7 @@ function setMode(m){
   $("tab-login").setAttribute("aria-selected", String(!reg));
   $("tab-register").setAttribute("aria-selected", String(reg));
   $("authTitle").textContent = reg ? "Konto erstellen" : "Anmelden";
-  $("authLead").textContent = reg ? "Ein Konto pro Haushalt genügt. Ihre Werte werden darin gespeichert." : "Melden Sie sich an, um Ihre Belege und Werte weiterzubearbeiten.";
+  $("authLead").textContent = reg ? "Erstellen Sie ein Konto und starten Sie Ihre Steuererklärung. Falls Sie eine Einladung erhalten haben, verwenden Sie diese E-Mail-Adresse." : "Melden Sie sich an, um Ihre Belege und Werte weiterzubearbeiten.";
   $("authSubmit").textContent = reg ? "Konto erstellen" : "Anmelden";
   $("repeatWrap").hidden = !reg; $("pwHint").hidden = !reg; $("terms").hidden = !reg; $("forgotRow").hidden = reg;
   $("password").autocomplete = reg ? "new-password" : "current-password";
@@ -222,13 +221,13 @@ $("form-auth").addEventListener("submit", async e=>{
     if(mode==="register"){
       const { data, error } = await sb.auth.signUp({ email, password: pw, options:{ emailRedirectTo: redirectUrl() } });
       if(error) throw error;
-      if(data.session){ location.replace(SP.nextPage()); return; }
+      if(data.session){ location.replace(await SP.afterLogin()); return; }
       message(msg, "Fast geschafft. Wir haben Ihnen eine E-Mail geschickt. Klicken Sie auf den Link darin, um Ihr Konto zu bestätigen.", "ok");
       $("password").value = ""; $("password2").value = "";
     } else {
       const { error } = await sb.auth.signInWithPassword({ email, password: pw });
       if(error) throw error;
-      location.replace(SP.nextPage()); return;
+      location.replace(await SP.afterLogin()); return;
     }
   }catch(err){ message(msg, germanError(err), "bad"); }
   busy(btn, false, label);
@@ -257,7 +256,7 @@ $("form-reset").addEventListener("submit", async e=>{
     const { error } = await sb.auth.updateUser({ password: pw });
     if(error) throw error;
     message(msg, "Passwort gespeichert. Sie werden weitergeleitet.", "ok");
-    setTimeout(()=>location.replace("upload.html"), 1200); return;
+    setTimeout(async ()=>location.replace(await SP.homePage()), 1200); return;
   }catch(err){ message(msg, germanError(err), "bad"); }
   busy(btn, false, "Passwort speichern");
 });
@@ -267,7 +266,10 @@ $("form-reset").addEventListener("submit", async e=>{
   sb.auth.onAuthStateChange((event)=>{ if(event==="PASSWORD_RECOVERY") show("reset"); });
   if(isRecovery){ show("reset"); return; }
   const user = await SP.getUser();
-  if(user) location.replace(SP.nextPage());
+  if(user){ location.replace(await SP.afterLogin()); return; }
+  // Einladungslink: E-Mail vorausfüllen und Registrierung zeigen
+  const inv = new URLSearchParams(location.search).get("email");
+  if(inv && validEmail(inv)){ setMode("register"); $("email").value = inv; $("password").focus(); }
 })();
 </script>
 </body>

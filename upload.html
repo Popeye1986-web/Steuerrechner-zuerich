@@ -52,6 +52,11 @@ body.pending main{visibility:hidden}
 .miss li .top{display:flex;justify-content:space-between;gap:8px;align-items:center}
 .miss li span.w{font-size:13.5px;color:var(--muted)}
 #docList{display:flex;flex-direction:column;gap:10px}
+.casebar{margin-top:24px;padding:14px 18px;display:flex;flex-wrap:wrap;align-items:center;gap:10px 20px}
+.casebar .who{flex:1 1 260px;min-width:0;display:flex;flex-direction:column}
+.casebar .who b{font-size:17px}
+.casebar select{width:auto}
+body.locked .drop,body.locked .typical{display:none}
 .empty-docs{padding:28px 20px;text-align:center;color:var(--muted)}
 details.adjust summary{cursor:pointer;font-weight:600;font-size:15px;min-height:36px;display:flex;align-items:center}
 details.adjust .box{display:flex;flex-direction:column;gap:12px;padding-top:8px}
@@ -60,11 +65,8 @@ details.adjust .box{display:flex;flex-direction:column;gap:12px;padding-top:8px}
 <body class="pending">
 <header class="top">
   <div class="page">
-    <a class="wordmark" href="upload.html" aria-label="taxflix">tax<b>flix</b></a>
-    <ol class="steps" aria-label="Schritte">
-      <li><a href="upload.html" aria-current="page"><span class="n">1</span>Belege</a></li>
-      <li><a href="ergebnis.html"><span class="n">2</span>Ergebnis</a></li>
-    </ol>
+    <a class="wordmark" href="kunde.html" id="home" aria-label="taxflix">tax<b>flix</b></a>
+    <ol class="steps" aria-label="Navigation" id="nav"></ol>
     <div class="account">
       <span class="save" id="save" role="status"></span>
       <span id="who"></span>
@@ -74,9 +76,11 @@ details.adjust .box{display:flex;flex-direction:column;gap:12px;padding-top:8px}
 </header>
 
 <main class="page">
+  <div class="card casebar" id="caseBar" hidden></div>
+  <div class="notice" id="lockNote" hidden style="margin-top:24px"></div>
   <div class="intro">
-    <span class="label">Steuererklärung Kanton Zürich</span>
-    <h1>Laden Sie einfach alle Belege hoch</h1>
+    <span class="label" id="introLabel">Steuererklärung Kanton Zürich</span>
+    <h1 id="introTitle">Laden Sie einfach alle Belege hoch</h1>
     <p class="muted">taxflix erkennt selbst, um welchen Beleg es sich handelt, wem er gehört und welche Beträge darauf stehen. Daraus ergeben sich Ihr Haushalt und Ihre Steuererklärung.</p>
   </div>
 
@@ -111,7 +115,8 @@ details.adjust .box{display:flex;flex-direction:column;gap:12px;padding-top:8px}
         <h2>Fehlt vermutlich</h2>
         <ul class="miss" id="missing"></ul>
       </div>
-      <a class="btn primary" href="ergebnis.html" style="min-height:50px">Weiter zum Ergebnis</a>
+      <a class="btn primary" id="toResult" href="#" style="min-height:50px" hidden>Weiter zum Ergebnis</a>
+      <div class="card panel" id="submitPanel" hidden></div>
     </aside>
 
     <section class="docs" aria-labelledby="h-docs">
@@ -141,7 +146,8 @@ function el(tag, attrs, ...kids){ const e=document.createElement(tag); for(const
 function toast(t){ const e=$("toast"); e.textContent=t; e.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>e.hidden=true,2400); }
 function onSave(st){ const e=$("save"); e.className="save"+(st==="error"?" bad":""); e.textContent=st==="saving"?"Wird gespeichert …":st==="saved"?"Gespeichert":st==="error"?"Nicht gespeichert, Verbindung prüfen":""; }
 const O = () => S.overrides;
-function commit(){ TX.rebuild(S); TX.saveState(S,onSave); render(); }
+let PRUEFER=false, LOCKED=false;
+function commit(){ TX.rebuild(S); TX.saveCase(S,onSave); render(); }
 const first = n => String(n||"").split(" ")[0];
 
 /* ---------- Upload ---------- */
@@ -152,6 +158,7 @@ drop.addEventListener("drop",e=>addFiles([...e.dataTransfer.files]));
 fileIn.addEventListener("change",()=>{ addFiles([...fileIn.files]); fileIn.value=""; });
 
 async function addFiles(files){
+  if(LOCKED){ toast("Dieser Fall ist in Prüfung und kann nicht mehr geändert werden"); return; }
   for(const f of files){
     if(!/^(application\/pdf|image\/(jpeg|png|webp))$/.test(f.type)){ toast(f.name+": nur PDF, JPG, PNG oder WebP"); continue; }
     if(f.size>20*1024*1024){ toast(f.name+": grösser als 20 MB"); continue; }
@@ -160,7 +167,7 @@ async function addFiles(files){
     if(USER && SP.client){
       try{
         const safe=f.name.normalize("NFKD").replace(/[^\w.\-]+/g,"_").slice(-80);
-        const path=`${USER.id}/${d.id}-${safe}`;
+        const path=`faelle/${TX.CASE.id}/${d.id}-${safe}`;
         const { error } = await SP.client.storage.from("belege").upload(path,f,{contentType:f.type,upsert:false});
         if(error) throw error; d.path=path;
       }catch(_){ d.hint="Datei konnte nicht gespeichert werden."; }
@@ -222,7 +229,9 @@ async function viewDoc(d){
 function setAuto(st){
   AUTO.state=st; const n=$("autoNote");
   n.hidden=st!=="off";
-  n.textContent="Automatisches Auslesen ist noch nicht eingerichtet. Ihre Belege werden gespeichert. Wählen Sie bis dahin bei jedem Beleg den Typ und tragen Sie die Beträge ein, und ergänzen Sie unter «Angaben anpassen» Zivilstand, Kinder und Gemeinde.";
+  n.textContent = PRUEFER
+    ? "Automatisches Auslesen ist noch nicht eingerichtet. Die Belege werden gespeichert. Wählen Sie bis dahin bei jedem Beleg den Typ, tragen Sie die Beträge ein und ergänzen Sie unter «Angaben anpassen» Zivilstand, Kinder und Gemeinde."
+    : "Ihre Belege werden sicher gespeichert. Die Angaben darauf übernehmen wir bei der Prüfung.";
 }
 
 /* ---------- Belegliste ---------- */
@@ -242,12 +251,13 @@ function renderDocs(){
       el("span",{class:"pill "+pc,text:pt}),
       el("div",{class:"btns"},
         d.path&&USER ? el("button",{class:"btn small",type:"button",text:"Ansehen",onclick:()=>viewDoc(d)}) : null,
-        AUTO.state==="on" && (FILES.has(d.id)||d.path) && !["lesen","wartet","speichern"].includes(d.status) ? el("button",{class:"btn small",type:"button",text:d.result?"Neu lesen":"Auslesen",onclick:()=>enqueue(d.id)}) : null,
-        el("button",{class:"btn ghost small",type:"button","aria-label":"Beleg entfernen: "+d.name,text:"Entfernen",onclick:()=>removeDoc(d.id)})));
+        !LOCKED && AUTO.state==="on" && (PRUEFER || !d.result) && (FILES.has(d.id)||d.path) && !["lesen","wartet","speichern"].includes(d.status) ? el("button",{class:"btn small",type:"button",text:d.result?"Neu lesen":"Auslesen",onclick:()=>enqueue(d.id)}) : null,
+        LOCKED ? null : el("button",{class:"btn ghost small",type:"button","aria-label":"Beleg entfernen: "+d.name,text:"Entfernen",onclick:()=>removeDoc(d.id)})));
     const card=el("article",{class:"card doc"}, row);
     if(d.hint && d.status==="fertig") card.append(el("span",{class:"note",text:d.hint}));
 
-    // Details: Typ, Person, Werte
+    // Details: Typ, Person, Werte (nur für den Prüfer)
+    if(!PRUEFER){ box.append(card); continue; }
     const det=el("details",{}); if(!d.result && d.status==="gespeichert" && AUTO.state==="off") det.open=true;
     det.append(el("summary",{text: d.result ? "Werte ansehen und korrigieren" : "Typ und Werte"}));
     const inner=el("div",{class:"box"});
@@ -285,18 +295,24 @@ function renderDocs(){
 function fact(k, v, src, unknown){ return el("div",{class:"fact"}, el("span",{class:"k",text:k}), el("span",{}, el("span",{class:unknown?"unk":null,text:v}), src?el("span",{class:"src",text:src}):null)); }
 function renderFacts(){
   const D=S.derived||{}, f=$("facts"); f.replaceChildren();
-  f.append(fact("Steuerperiode", String(S.year), O().year?"Ihre Angabe":(S.docs.some(d=>d.result)?"aus den Belegen":"")));
+  f.append(fact("Steuerjahr", String(S.year), TX.CASE.row ? "Steuerjahr des Falls" : (O().year?"Ihre Angabe":"")));
   const zKnown=!!(O().zivil||D.zivilAuto);
   f.append(fact("Zivilstand", S.zivil==="verheiratet"?"Verheiratet":zKnown?"Alleinstehend":"Noch unklar", O().zivil?"Ihre Angabe":D.zivilSrc?"aus "+D.zivilSrc:"", !zKnown));
   const ad=D.adults||[];
   f.append(fact("Personen", ad.length ? ad.slice(0,TX.nPersons(S)).map(a=>a.name+(a.age!=null?` (${a.age})`:"")).join(", ") : "Noch keine erkannt", "", !ad.length));
   const kids=D.kids||[];
   f.append(fact("Kinder", S.kinder ? `${S.kinder}${kids.length?": "+kids.map(k=>first(k.name)+(k.age!=null?` (${k.age})`:"")).join(", "):""}` : "Keine", S.kinderU14?`davon ${S.kinderU14} bis 14 Jahre`:""));
-  f.append(fact("Gemeinde", (S.gemeindeName||"Noch unklar")+` · Steuerfuss ${S.gfuss} %`, D.gfussSrc?(D.gfussSrc==="Ihre Angabe"?D.gfussSrc:"aus "+D.gfussSrc):"bitte bestätigen", !D.gfussSrc));
-  f.append(fact("Kirche", S.kfuss?`Kirchensteuerfuss ${S.kfuss} %`:"Keine Kirchensteuer", D.kfussSrc?(D.kfussSrc==="Ihre Angabe"?D.kfussSrc:"aus "+D.kfussSrc):"bitte bestätigen", !D.kfussSrc));
+  if(PRUEFER){
+    f.append(fact("Gemeinde", (S.gemeindeName||"Noch unklar")+` · Steuerfuss ${S.gfuss} %`, D.gfussSrc?(D.gfussSrc==="Ihre Angabe"?D.gfussSrc:"aus "+D.gfussSrc):"bitte bestätigen", !D.gfussSrc));
+    f.append(fact("Kirche", (O().konfession&&O().konfession!=="keine"?O().konfession+" · ":"")+(S.kfuss?`Kirchensteuerfuss ${S.kfuss} %`:(D.kfussSrc?"Keine Kirchensteuer":"Steuerfuss offen")), D.kfussSrc?(D.kfussSrc==="Ihre Angabe"?D.kfussSrc:"aus "+D.kfussSrc):"bitte bestätigen", !D.kfussSrc));
+  } else {
+    f.append(fact("Gemeinde", S.gemeindeName||"Noch nicht erkannt", "", !S.gemeindeName));
+    const k=O().konfession; f.append(fact("Kirche", k ? ({keine:"Keine Mitgliedschaft",reformiert:"Reformiert",katholisch:"Römisch-katholisch",christkatholisch:"Christkatholisch"})[k] : (D.kfussSrc?(S.kfuss?"Mitglied":"Keine Mitgliedschaft"):"Noch offen"), "", false));
+  }
   if(D.separate) f.append(el("p",{class:"notice warn",text:`${D.separate} ist nicht mit Ihnen verheiratet. Diese Belege gehören in eine eigene Steuererklärung und werden hier nicht gerechnet.`}));
   if(D.others && D.others.length) f.append(el("p",{class:"note",text:"Weitere Personen auf den Belegen: "+D.others.join(", ")}));
-  renderAdjust();
+  $("adjust").hidden=!PRUEFER;
+  if(PRUEFER) renderAdjust();
 }
 function renderAdjust(){
   const b=$("adjustBox"); b.replaceChildren(); const o=O();
@@ -324,9 +340,21 @@ function renderAdjust(){
 }
 
 /* ---------- Fragen und fehlende Belege ---------- */
+const reading = () => S.docs.some(d=>["speichern","wartet","lesen"].includes(d.status));
+// Kunden sehen Fragen erst, wenn alle Belege gelesen sind, und nur solche, die sie beantworten können
+function custQuestions(){
+  if(AUTO.state!=="on" || !S.docs.length || reading()) return [];
+  const o=O(), out=[];
+  for(const q of (S.derived&&S.derived.questions)||[]){
+    if(q.id==="gfuss"){ if(!S.gemeindeName && !o.gemeindeName) out.push({id:"gemeinde",text:"In welcher Gemeinde wohnen Sie?",why:"Für die Gemeindesteuer."}); }
+    else if(q.id==="kirche"){ if(!o.konfession) out.push({id:"konf",text:"Sind Sie Mitglied einer Landeskirche?",why:"Für die Kirchensteuer."}); }
+    else out.push(q);
+  }
+  return out;
+}
 function renderQuestions(){
-  const qs=(S.derived&&S.derived.questions)||[], box=$("questions"); box.replaceChildren();
-  $("qPanel").hidden=!qs.length;
+  const qs=PRUEFER ? ((S.derived&&S.derived.questions)||[]) : custQuestions(), box=$("questions"); box.replaceChildren();
+  $("qPanel").hidden=!qs.length || LOCKED;
   for(const q of qs){
     const w=el("div",{class:"q"}, el("p",{class:"t",text:q.text}), el("p",{class:"note",text:q.why}));
     const row=el("div",{class:"row"}); const o=O();
@@ -349,6 +377,13 @@ function renderQuestions(){
       const km=el("input",{id:"q-km"+i,type:"number",min:"0",step:"1",placeholder:"km einfach"});
       row.append(el("div",{class:"field"}, el("label",{for:"q-w"+i,text:"Arbeitsweg"}), s), el("div",{class:"field"}, el("label",{for:"q-km"+i,text:"km einfach (Auto, Motorrad)"}), km),
         el("button",{class:"btn small primary",type:"button",text:"Übernehmen",onclick:()=>{ op.weg=s.value; op.km=+km.value||0; commit(); }}));
+    } else if(q.id==="gemeinde"){
+      const g=el("input",{id:"q-gem2",type:"text",placeholder:"z.B. Winterthur",autocomplete:"address-level2"});
+      row.append(el("div",{class:"field"}, el("label",{for:"q-gem2",text:"Gemeinde"}), g),
+        el("button",{class:"btn small primary",type:"button",text:"Übernehmen",onclick:()=>{ if(!g.value.trim()){ toast("Bitte Gemeinde eingeben"); g.focus(); return; } o.gemeindeName=g.value.trim(); commit(); }}));
+    } else if(q.id==="konf"){
+      for(const [v,t] of [["keine","Nein"],["reformiert","Reformiert"],["katholisch","Römisch-katholisch"],["christkatholisch","Christkatholisch"]])
+        row.append(el("button",{class:"btn small",type:"button",text:t,onclick:()=>{ o.konfession=v; commit(); }}));
     } else if(q.id.startsWith("ausb:")){
       row.append(el("button",{class:"btn small",type:"button",text:"Ja",onclick:()=>{o.ausbildung[q.kid]=true; commit();}}),
                  el("button",{class:"btn small",type:"button",text:"Nein",onclick:()=>{o.ausbildung[q.kid]=false; commit();}}));
@@ -359,26 +394,73 @@ function renderQuestions(){
 function renderMissing(){
   const m=(S.derived&&S.derived.missing)||[], ul=$("missing"); ul.replaceChildren();
   $("missPanel").hidden=!m.length || !S.docs.length;
-  for(const x of m) ul.append(el("li",{}, el("div",{class:"top"}, el("b",{text:x.name}), el("button",{class:"btn ghost small",type:"button",text:"Habe ich nicht",onclick:()=>{ S.na[x.id]=true; commit(); }})), el("span",{class:"w",text:x.why})));
+  for(const x of m) ul.append(el("li",{}, el("div",{class:"top"}, el("b",{text:x.name}), LOCKED ? null : el("button",{class:"btn ghost small",type:"button",text:"Habe ich nicht",onclick:()=>{ S.na[x.id]=true; commit(); }})), el("span",{class:"w",text:x.why})));
+}
+
+/* ---------- Fall ---------- */
+function renderCase(){
+  const row=TX.CASE.row; if(!row) return;
+  const st=row.status;
+  LOCKED = !PRUEFER && (row.bezahlt || st!=="offen");
+  document.body.classList.toggle("locked", LOCKED);
+  const ln=$("lockNote"); ln.hidden=!LOCKED;
+  if(LOCKED) ln.textContent = st==="abgeschlossen" ? "Ihre Steuererklärung ist abgeschlossen. Bei Fragen melden Sie sich bitte bei uns." : "Ihre Belege sind bei uns und werden geprüft. Änderungen sind nicht mehr möglich. Haben Sie noch etwas vergessen? Schreiben Sie uns.";
+  if(PRUEFER){
+    const bar=$("caseBar"); bar.hidden=false; bar.replaceChildren();
+    const sel=el("select",{id:"statusSel","aria-label":"Status des Falls"}); for(const [k,v] of Object.entries(TX.STATUS)) sel.append(el("option",{value:k,text:v.t}));
+    sel.value=st;
+    sel.addEventListener("change",async()=>{ try{ await TX.setCaseStatus(sel.value); toast("Status: "+TX.STATUS[sel.value].t); render(); }catch(_){ toast("Status konnte nicht gespeichert werden"); sel.value=TX.CASE.row.status; } });
+    bar.append(el("a",{class:"btn ghost small",href:"faelle.html",text:"← Alle Fälle"}),
+      el("div",{class:"who"}, el("b",{text:row.kunde_name}), el("span",{class:"muted",text:`${row.kunde_email} · Steuerjahr ${row.jahr}`})),
+      el("label",{for:"statusSel",class:"label",text:"Status"}), sel);
+    $("toResult").hidden=false; $("toResult").href="ergebnis.html?fall="+row.id;
+    $("submitPanel").hidden=true;
+  } else {
+    const p=$("submitPanel"); p.hidden=false; p.replaceChildren();
+    if(row.bezahlt || st!=="offen"){
+      p.append(el("span",{class:"pill ok",text:row.bezahlt?"Bezahlt":TX.STATUS[st].t}), el("h2",{text:"Fertig"}),
+        el("p",{class:"muted",text:"Wir prüfen Ihre Belege und melden uns per E-Mail, sobald Ihre Steuererklärung bereit ist."}));
+    } else if(!S.docs.length){
+      p.append(el("h2",{text:"So geht es weiter"}), el("p",{class:"muted",text:"Laden Sie oben alle Belege hoch. Danach stellen wir Ihnen nur noch Fragen, die auf keinem Beleg stehen, und Sie können bezahlen."}));
+    } else if(reading()){
+      p.append(el("span",{class:"pill run red",text:"Wird gelesen"}), el("h2",{text:"Belege werden gelesen"}), el("p",{class:"muted",text:"Das dauert pro Beleg etwa 10 bis 30 Sekunden. Sie können währenddessen weitere Belege hochladen."}));
+    } else {
+      const qs=custQuestions(), miss=(S.derived&&S.derived.missing||[]).length;
+      if(qs.length){
+        p.append(el("h2",{text:"Fast geschafft"}), el("p",{class:"muted",text:`Bitte beantworten Sie noch ${qs.length===1?"eine Frage":qs.length+" Fragen"}. Danach können Sie bezahlen.`}));
+      } else {
+        p.append(el("span",{class:"pill ok",text:"Alles erfasst"}), el("h2",{text:"Bereit zur Bezahlung"}),
+          el("p",{class:"muted",text: miss ? "Falls Sie noch weitere Belege haben, laden Sie diese jetzt hoch. Sonst können Sie direkt bezahlen." : "Wir haben alles, was wir brauchen."}),
+          el("a",{class:"btn primary",href:"bezahlen.html?fall="+row.id,text:"Weiter zur Bezahlung",style:"min-height:52px"}));
+      }
+    }
+  }
 }
 
 function render(){
   const act=document.activeElement && document.activeElement.id;
   const openAdj=$("adjust").open;
   const openDocs=new Set([...document.querySelectorAll("#docList details[open] select")].map(s=>s.id));
-  renderDocs(); renderFacts(); renderQuestions(); renderMissing();
+  renderCase(); renderDocs(); renderFacts(); renderQuestions(); renderMissing();
   $("adjust").open=openAdj;
   for(const id of openDocs){ const e=document.getElementById(id); if(e) e.closest("details").open=true; }
   if(act){ const e=document.getElementById(act); if(e){ const d=e.closest("details"); if(d) d.open=true; e.focus({preventScroll:true}); } }
 }
 
 (async function boot(){
-  if(window.SP && SP.configured && !SP.client){ $("localNote").textContent="Die Anmeldung konnte nicht geladen werden. Bitte Seite neu laden."; $("localNote").hidden=false; }
-  const { state, user }=await TX.loadState();
-  S=state; USER=user; S.overrides=S.overrides||{persons:[{},{}],ausbildung:{}};
-  if(USER){ $("who").textContent=USER.email||""; $("logout").hidden=false; $("logout").addEventListener("click",()=>SP.logout());
-    SP.client.auth.onAuthStateChange(ev=>{ if(ev==="SIGNED_OUT") location.replace("login.html"); }); onSave("saved"); }
-  else if(!(window.SP&&SP.configured)) $("localNote").hidden=false;
+  if(!SP.configured || !SP.client){ $("localNote").textContent="Login ist nicht eingerichtet. Bitte config.js prüfen."; $("localNote").hidden=false; document.body.classList.remove("pending"); return; }
+  const res=await TX.loadCase();
+  USER=res.user; PRUEFER=res.pruefer;
+  if(res.error){ location.replace(PRUEFER?"faelle.html":"kunde.html"); return; }
+  S=res.state;
+  $("who").textContent=USER.email||""; $("logout").hidden=false; $("logout").addEventListener("click",()=>SP.logout());
+  SP.client.auth.onAuthStateChange(ev=>{ if(ev==="SIGNED_OUT") location.replace("login.html"); }); onSave("saved");
+  const id=TX.CASE.id;
+  $("home").href = PRUEFER ? "faelle.html" : "kunde.html";
+  const links = PRUEFER ? [["faelle.html","Steuerfälle",""],["upload.html?fall="+id,"Belege","1"],["ergebnis.html?fall="+id,"Ergebnis","2"]] : [["kunde.html","Meine Steuererklärung",""]];
+  $("nav").replaceChildren(...links.map(([h,t,n],i)=>el("li",{}, el("a",{href:h,"aria-current":PRUEFER&&i===1?"page":null}, n?el("span",{class:"n",text:n}):null, t))));
+  if(PRUEFER){ $("introLabel").textContent="Prüferansicht"; $("introTitle").textContent="Belege von "+TX.CASE.row.kunde_name; }
+  else { $("introLabel").textContent="Steuererklärung "+TX.CASE.row.jahr; }
   TX.rebuild(S);
   document.body.classList.remove("pending");
   render();
