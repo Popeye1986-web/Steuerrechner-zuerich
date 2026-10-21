@@ -105,6 +105,16 @@ body.locked .drop,body.locked .needs{display:none}
   box-shadow:0 8px 20px rgba(0,0,0,.3),inset 0 0 0 3px #14406e,inset 0 0 0 5px rgba(255,255,255,.55)}
 .sh-seal span{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
 .sh-seal span::before{content:"";width:24px;height:24px;background:#fff;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1.5 3.5 4.8v6.4c0 5.3 3.6 9.9 8.5 11.3 4.9-1.4 8.5-6 8.5-11.3V4.8L12 1.5Zm-1.3 14.6-3.9-3.9 1.5-1.5 2.4 2.4 5.2-5.2 1.5 1.5-6.7 6.7Z'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1.5 3.5 4.8v6.4c0 5.3 3.6 9.9 8.5 11.3 4.9-1.4 8.5-6 8.5-11.3V4.8L12 1.5Zm-1.3 14.6-3.9-3.9 1.5-1.5 2.4 2.4 5.2-5.2 1.5 1.5-6.7 6.7Z'/%3E%3C/svg%3E") center/contain no-repeat}
+/* Animation: Belege fliegen ins Formular, Beträge füllen sich, Stempel «Geprüft» */
+.sh-row{position:relative;transition:background .4s}
+.sh-row.hot{background:#e9f0f8}
+.sh-row .v{transition:color .3s,border-color .3s}
+.sh-row .v.empty{color:transparent;background:repeating-linear-gradient(90deg,#eef2f6 0 8px,#f7f9fb 8px 16px)}
+.sh-row.hot .v{border-color:#14406e}
+.fly{position:absolute;left:0;top:0;z-index:3;display:flex;align-items:center;gap:7px;padding:6px 10px 6px 8px;border-radius:7px;background:#fff;color:#0e1a2b;font-size:12px;font-weight:600;white-space:nowrap;
+  box-shadow:0 10px 24px rgba(0,0,0,.28),0 1px 3px rgba(0,0,0,.15);pointer-events:none;opacity:0}
+.fly::before{content:"";width:14px;height:17px;flex:none;border-radius:2px;background:linear-gradient(135deg,transparent 4px,#14406e 4px)}
+.scanline{position:absolute;left:0;right:0;height:2px;top:0;background:linear-gradient(90deg,transparent,#5b9be0,transparent);box-shadow:0 0 12px #5b9be0;opacity:0;pointer-events:none;z-index:2}
 .sheet figcaption{position:absolute;left:22px;bottom:-24px;font-size:12px;color:#a9b8cc;transform:rotate(1.2deg)}
 .howto{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:40px}
 .howto div{display:flex;gap:12px;align-items:flex-start;font-size:15px;color:var(--muted)}
@@ -163,14 +173,15 @@ details.adjust .box{display:flex;flex-direction:column;gap:12px;padding-top:8px}
         <span class="sh-form">Form. 303</span>
       </div>
       <div class="sh-band">Seite 2 · Einkünfte</div>
-      <div class="sh-row"><span class="zz">1.1</span><span class="c">100</span><span class="l">Haupterwerb</span><span class="v">92 400</span></div>
-      <div class="sh-row"><span class="zz">4.1</span><span class="c">150</span><span class="l">Wertschriftenertrag</span><span class="v">420</span></div>
+      <div class="sh-row" data-src="Lohnausweis.pdf"><span class="zz">1.1</span><span class="c">100</span><span class="l">Haupterwerb</span><span class="v">92 400</span></div>
+      <div class="sh-row" data-src="eSteuerauszug.pdf"><span class="zz">4.1</span><span class="c">150</span><span class="l">Wertschriftenertrag</span><span class="v">420</span></div>
       <div class="sh-band">Seite 3 · Abzüge</div>
-      <div class="sh-row"><span class="zz">11.1</span><span class="c">220</span><span class="l">Berufsauslagen</span><span class="v">5 972</span></div>
-      <div class="sh-row"><span class="zz">14.1</span><span class="c">262</span><span class="l">Säule 3a</span><span class="v">7 258</span></div>
-      <div class="sh-row"><span class="zz">15</span><span class="c">270</span><span class="l">Versicherungsprämien</span><span class="v">2 900</span></div>
+      <div class="sh-row" data-src=""><span class="zz">11.1</span><span class="c">220</span><span class="l">Berufsauslagen</span><span class="v">5 972</span></div>
+      <div class="sh-row" data-src="Saeule-3a.pdf"><span class="zz">14.1</span><span class="c">262</span><span class="l">Säule 3a</span><span class="v">7 258</span></div>
+      <div class="sh-row" data-src="Krankenkasse.pdf"><span class="zz">15</span><span class="c">270</span><span class="l">Versicherungsprämien</span><span class="v">2 900</span></div>
       <div class="sh-row sh-total"><span class="zz">25</span><span class="c">390</span><span class="l">Steuerbares Einkommen</span><span class="v">76 690</span></div>
       <span class="sh-seal" aria-hidden="true"><span>Geprüft</span></span>
+      <span class="scanline" aria-hidden="true"></span>
     </figure>
   </div>
 </section>
@@ -613,6 +624,52 @@ function setupHeader(){
     : guest||!USER ? [] : [["kunde.html","Meine Steuererklärung",""]];
   $("nav").replaceChildren(...links.map(([h,t,n],i)=>el("li",{}, el("a",{href:h,"aria-current":PRUEFER&&i===1?"page":null}, n?el("span",{class:"n",text:n}):null, t))));
 }
+/* ---------- Animation auf der Startseite ---------- */
+function heroAnimation(){
+  const sheet=document.querySelector(".sheet"); if(!sheet) return;
+  if(matchMedia("(prefers-reduced-motion: reduce)").matches) return; // ruhige Darstellung: fertiges Formular
+  const rows=[...sheet.querySelectorAll(".sh-row")], seal=sheet.querySelector(".sh-seal"), scan=sheet.querySelector(".scanline");
+  const vals=rows.map(r=>{ const v=r.querySelector(".v"); return { r, v, n:+v.textContent.replace(/\D/g,""), src:r.dataset.src||"" }; });
+  const fmt=n=>String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g," ");
+  const wait=ms=>new Promise(r=>setTimeout(r,ms));
+  let visible=true, running=false;
+  new IntersectionObserver(es=>{ visible=es[0].isIntersecting; if(visible && !running) loop(); },{threshold:.2}).observe(sheet);
+  function count(x,ms){ return new Promise(res=>{ const t0=performance.now(); x.v.classList.remove("empty");
+    (function step(t){ const k=Math.min(1,(t-t0)/ms), e=1-Math.pow(1-k,3); x.v.textContent=fmt(x.n*e); if(k<1) requestAnimationFrame(step); else res(); })(t0); }); }
+  async function fly(x){
+    const chip=document.createElement("span"); chip.className="fly"; chip.textContent=x.src; sheet.append(chip);
+    const sr=sheet.getBoundingClientRect(), rr=x.r.getBoundingClientRect();
+    const y=rr.top-sr.top+rr.height/2-14, fromX=sr.width<400?-12:-150, toX=sr.width-140;
+    await chip.animate([{transform:`translate(${fromX}px,${y-40}px) rotate(-6deg)`,opacity:0},{transform:`translate(${fromX+30}px,${y-20}px) rotate(-3deg)`,opacity:1,offset:.3},{transform:`translate(${toX}px,${y}px) scale(.6)`,opacity:0}],{duration:900,easing:"cubic-bezier(.5,0,.3,1)"}).finished;
+    chip.remove();
+  }
+  async function loop(){
+    if(running) return; running=true;
+    while(visible){
+      vals.forEach(x=>{ x.v.textContent="\u00a0"; x.v.classList.add("empty"); x.r.classList.remove("hot"); });
+      seal.style.opacity="0";
+      await wait(600);
+      scan.animate([{top:"0%",opacity:0},{opacity:1,offset:.1},{opacity:1,offset:.9},{top:"100%",opacity:0}],{duration:1400,easing:"ease-in-out"});
+      await wait(1000);
+      for(const x of vals){
+        if(!visible) break;
+        x.r.classList.add("hot");
+        if(x.src) await fly(x);
+        await count(x, x.r.classList.contains("sh-total") ? 1100 : 650);
+        setTimeout(()=>x.r.classList.remove("hot"),500);
+        await wait(180);
+      }
+      await wait(250);
+      seal.style.opacity="1";
+      await seal.animate([{transform:"rotate(-14deg) scale(1.9)",opacity:0},{transform:"rotate(14deg) scale(.92)",opacity:1,offset:.7},{transform:"rotate(10deg) scale(1)",opacity:1}],{duration:520,easing:"cubic-bezier(.3,1.4,.6,1)"}).finished;
+      sheet.animate([{transform:"rotate(-1.2deg) translateY(0)"},{transform:"rotate(-1.2deg) translateY(3px)"},{transform:"rotate(-1.2deg) translateY(0)"}],{duration:220});
+      await wait(5500);
+    }
+    vals.forEach(x=>{ x.v.textContent=fmt(x.n); x.v.classList.remove("empty"); x.r.classList.remove("hot"); }); seal.style.opacity="1";
+    running=false;
+  }
+}
+
 $("logout").addEventListener("click",()=>SP.logout());
 addEventListener("pagehide",()=>{ TX.flushCase().catch(()=>{}); });
 
@@ -630,7 +687,7 @@ addEventListener("pagehide",()=>{ TX.flushCase().catch(()=>{}); });
     }
     S=TX.emptyState(2025);
     document.body.classList.add("fresh");
-    $("hero").hidden=false; $("howto").hidden=false; $("yearPick").hidden=false; $("loginLink").hidden=false;
+    $("hero").hidden=false; heroAnimation(); $("howto").hidden=false; $("yearPick").hidden=false; $("loginLink").hidden=false;
     $("yearSel").addEventListener("change",()=>{ S.year=+$("yearSel").value; S.overrides.year=S.year; });
     $("introLabel").textContent="Schritt 1";
     setupHeader(); TX.rebuild(S);
