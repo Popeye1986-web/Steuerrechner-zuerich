@@ -57,6 +57,30 @@ table.form tr.sub td:nth-child(3){padding-left:28px}
 table.form tr.nil td.amt{color:#b4bdc9}
 table.form tr.summe td{font-weight:700;border-top:1px solid var(--line)}
 table.form tr.tot td{font-weight:700;background:var(--red-soft)}
+/* Ausführliche Herkunft pro Ziffer */
+.dbtn{border:0;background:none;padding:2px 0;margin-left:8px;font:inherit;font-size:12.5px;font-weight:600;color:var(--red);cursor:pointer;white-space:nowrap}
+.dbtn::before{content:"▸ ";display:inline-block;transition:transform .15s}
+.dbtn[aria-expanded="true"]::before{transform:rotate(90deg)}
+table.form tr.detail td{background:#f8fafc;padding:0 14px 12px 84px;border-bottom:1px solid var(--line)}
+.dtab{width:100%;min-width:0;font-size:13.5px;border-collapse:collapse}
+.dtab td{padding:5px 8px;border-bottom:1px dashed var(--line-soft);vertical-align:baseline}
+.dtab td.src{color:var(--muted);font-size:12.5px}
+.dtab tr.f td{color:var(--info);font-style:italic;border-bottom:0}
+.dtab tr.dsum td{font-weight:700;border-top:1px solid var(--line);border-bottom:0}
+.flag{display:inline-block;font-size:11px;font-weight:700;padding:1px 6px;border-radius:99px;margin-left:6px;vertical-align:1px}
+.flag.low{background:var(--warn-soft);color:var(--warn)}
+.flag.ed{background:var(--red-soft);color:var(--red)}
+@media print{table.form tr.detail{display:table-row!important}}
+.ptab{min-width:520px}
+.ptab td.k{color:var(--muted);width:30%}
+.ptab th{text-align:left}
+.bv{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.bv .card{padding:0;overflow:hidden}
+.bv h3{padding:12px 16px;border-bottom:1px solid var(--line-soft);display:flex;justify-content:space-between;gap:8px;align-items:baseline;font-size:15px}
+.bv h3 small{color:var(--muted);font-weight:500;font-size:12.5px;display:block;margin-top:2px;overflow-wrap:anywhere}
+.bv table{min-width:0;font-size:14px}
+.bv td{padding:7px 16px}
+.bv .none{padding:12px 16px;color:var(--muted);font-size:14px}
 .helpers{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px}
 .helper{padding:0;overflow:hidden}
 .helper h3{padding:14px 16px;border-bottom:1px solid var(--line-soft);display:flex;justify-content:space-between;gap:8px;align-items:baseline}
@@ -133,12 +157,18 @@ table.calc tr.h td{background:var(--sheet-2);font-weight:600;font-size:13px;lett
       <div class="tips" id="tips"></div>
     </section>
 
+    <section class="block" aria-labelledby="h-pers">
+      <h2 id="h-pers">Personalien · Seite 1</h2>
+      <p class="note">Angaben zu Personen, Kindern, Gemeinde und Kirche, wie sie auf Seite 1 des Formulars gehören. In Klammern die Quelle.</p>
+      <div class="card tablebox"><table class="ptab"><tbody id="persRows"></tbody></table></div>
+    </section>
+
     <section class="block" aria-labelledby="h-z">
       <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 16px;align-items:baseline">
         <h2 id="h-z">Steuererklärung <span id="formYear"></span> · Formular Kanton Zürich</h2>
-        <label class="check noprint" for="hideEmpty" style="min-height:32px;font-size:14px"><input id="hideEmpty" type="checkbox">Leere Zeilen ausblenden</label>
+        <span style="display:flex;gap:18px;flex-wrap:wrap"><label class="check noprint" for="allDetails" style="min-height:32px;font-size:14px"><input id="allDetails" type="checkbox">Alle Herkunftsangaben aufklappen</label><label class="check noprint" for="hideEmpty" style="min-height:32px;font-size:14px"><input id="hideEmpty" type="checkbox">Leere Zeilen ausblenden</label></span>
       </div>
-      <p class="note">Alle Ziffern in der Reihenfolge des Formulars «Steuererklärung» des Kantonalen Steueramts Zürich. Linke Spalte Staats- und Gemeindesteuer, rechte Spalte direkte Bundessteuer.</p>
+      <p class="note">Alle Ziffern in der Reihenfolge des Formulars «Steuererklärung» des Kantonalen Steueramts Zürich. Linke Spalte Staats- und Gemeindesteuer, rechte Spalte direkte Bundessteuer. Mit «Herkunft» sehen Sie bei jedem Betrag, aus welchen Belegen er stammt und wie er berechnet ist.</p>
       <div class="card tablebox">
         <table class="form">
           <thead><tr><th>Ziffer</th><th>Code</th><th>Bezeichnung</th><th class="r">Staatssteuer CHF</th><th class="r">Bundessteuer CHF</th><th class="noprint"><span style="position:absolute;left:-9999px">Kopieren</span></th></tr></thead>
@@ -162,6 +192,12 @@ table.calc tr.h td{background:var(--sheet-2);font-weight:600;font-size:13px;lett
     <section class="block" aria-labelledby="h-docs">
       <h2 id="h-docs">Belege für die Einreichung</h2>
       <ul class="docs" id="docs"></ul>
+    </section>
+
+    <section class="block" aria-labelledby="h-bv">
+      <h2 id="h-bv">Ausgelesene Werte pro Beleg</h2>
+      <p class="note">Jeder hochgeladene Beleg mit Typ, zugeordneter Person und allen übernommenen Beträgen samt Ziffer. <span class="flag low">unsicher</span> = beim Auslesen unsicher, bitte prüfen. <span class="flag ed">korrigiert</span> = von Hand angepasst.</p>
+      <div class="bv" id="bvList"></div>
     </section>
 
     <section class="block noprint" aria-labelledby="h-how">
@@ -267,6 +303,131 @@ function renderTips(){
 /* ---------- Formular wie auf Papier (Aufbau in taxcore.js) ---------- */
 const buildForm=()=>TX.formRows(S,R);
 let FORM=[];
+/* ---------- Herkunft und Berechnung pro Ziffer ---------- */
+const KEYZ = z => Object.entries(TX.KEYS).filter(([k,v])=>v.z===z).map(([k])=>k);
+function srcLines(keys, p){
+  const out=[];
+  for(const it of S.items.filter(i=>keys.includes(i.key) && (p===undefined || i.person===p) && (i.person==="g" || i.person<R.np))){
+    const d=S.docs.find(x=>x.id===it.docId);
+    const pos=d&&d.result&&(d.result.positionen||[]).find(x=>x.key===it.key);
+    const edited=d&&d.edits&&d.edits[it.key]!=null;
+    out.push({l:TX.KEYS[it.key].l + (it.person!=="g"&&R.np===2?" · "+TX.personName(S,it.person):""), src:d?(TX.typeName(d.type)+" · "+d.name):"Eigene Angabe", s:+it.amount, b:+it.amount, low:pos&&pos.sicherheit==="tief"&&!edited, ed:edited});
+  }
+  return out;
+}
+const F = t => ({f:t});
+function detailsFor(r){
+  if(r.kind==="page"||r.kind==="head") return null;
+  const z=r.z, P=R.P, Z=R.Z, B=TX.BUND, L=[];
+  const pIdx = /^(11|14)\.(1|2)$/.test(z) ? (+z.split(".")[1]-1) : r.p;
+  const sum=(lab,a,b)=>L.push({l:lab,s:a,b:b===undefined?a:b,sum:true});
+  const rowsOf = zs => R.rows.filter(x=>zs.includes(x.z) && x.kind==="wert");
+  switch(true){
+    case /^11\.[12]$/.test(z): { const x=P[pIdx]; if(!x) break; const pe=S.persons[x.p];
+      const weg={oev:"ÖV-Abo",velo:"Velo (Pauschale 700)",auto:"Auto",motorrad:"Motorrad",keine:"kein Arbeitsweg",offen:"Arbeitsweg noch offen"}[pe.weg]||pe.weg;
+      L.push(...srcLines(["oev_abo"],x.p));
+      L.push({l:`Fahrkosten (${weg}${pe.weg==="auto"||pe.weg==="motorrad"?`, ${pe.km} km × 2 × ${pe.tage} Tage`:""}${pe.geschaeftsauto?", Geschäftsauto: kein Abzug":""})`,s:x.fahrS,b:x.fahrB});
+      L.push(F(`Fahrkosten höchstens ${fmt(Z.fahrMax)} (Staat) bzw. ${fmt(B.fahrMax)} (Bund)`));
+      L.push({l:`Verpflegung (${pe.verpflegung==="voll"?"auswärts, CHF 15 pro Tag, max. 3'200":pe.verpflegung==="verbilligt"?"verbilligt/Kantine, CHF 7.50 pro Tag, max. 1'600":"kein Abzug"})`,s:x.verpf,b:x.verpf});
+      L.push({l:`Übrige Berufsauslagen: 3 % von ${fmt(x.lohn)}, mind. 2'000, max. 4'000`,s:x.uebrige,b:x.uebrige});
+      if(x.nebenP) L.push({l:`Nebenerwerb: 20 % von ${fmt(x.neben)}, mind. 800, max. 2'400`,s:x.nebenP,b:x.nebenP});
+      sum("Total Berufsauslagen",x.fahrS+x.verpf+x.uebrige+x.nebenP,x.fahrB+x.verpf+x.uebrige+x.nebenP); break; }
+    case /^14\.[12]$/.test(z): { const x=P[pIdx]; if(!x) break;
+      L.push(...srcLines(["saeule3a"],x.p));
+      L.push(F(`Maximum ${fmt(x.s3aCap)} (${S.persons[x.p].pk?"mit Pensionskasse":"ohne Pensionskasse: 20 % des Erwerbseinkommens, max. "+fmt(36288)})`));
+      sum("Abzug",x.s3a); break; }
+    case z==="15": {
+      L.push(...srcLines(["krankenkasse_praemien","versicherung_uebrige"]));
+      L.push(F(`Höchstbetrag Staat: ${R.verh?"verheiratet "+fmt(Z.vers.verh):"alleinstehend "+fmt(Z.vers.single)}${R.ohneVorsorge?" × 1.5 (ohne 2. Säule und 3a)":""}${R.kids?` + ${R.kids} × ${fmt(Z.vers.kind)} für Kinder`:""} = ${fmt(R.capS)}`));
+      L.push(F(`Höchstbetrag Bund: ${fmt(R.capB - B.vers.kind*R.kids)}${R.kids?` + ${R.kids} × ${fmt(B.vers.kind)} für Kinder`:""} = ${fmt(R.capB)}`));
+      sum("Abzug (tieferer Wert von bezahlt und Höchstbetrag)",Math.min(R.versAkt,R.capS),Math.min(R.versAkt,R.capB)); break; }
+    case z==="16.2": L.push(...srcLines(["weiterbildung"])); L.push(F(`Höchstens ${fmt(Z.weiterb)} (Staat) bzw. ${fmt(B.weiterb)} (Bund) pro Person`)); break;
+    case z==="16.6": L.push(...srcLines(["kinderbetreuung"])); L.push(F(`${R.kidsU14} Kind${R.kidsU14===1?"":"er"} unter 14 × höchstens ${fmt(Z.betreuung)} (Staat) bzw. ${fmt(B.betreuung)} (Bund)`)); break;
+    case z==="17": if(R.np===2){ P.forEach(x=>L.push({l:"Erwerbseinkommen "+TX.personName(S,x.p),s:x.erwerb,b:x.erwerb})); L.push(F(`Tieferes Erwerbseinkommen ${fmt(R.raw.lower)}. Staat: Pauschale ${fmt(Z.zweiverd)} (höchstens das tiefere Einkommen). Bund: 50 % davon, mindestens ${fmt(B.zwMin)}, höchstens ${fmt(B.zwMax)}.`)); } break;
+    case z==="6": L.push(...srcLines(["eigenmietwert","mietertrag","liegenschaft_unterhalt"])); L.push(F(`Bruttoertrag ${fmt(R.raw.liegBrutto)} abzüglich Unterhalt ${fmt(R.raw.liegUnt)}${TX.valueOf(S,"liegenschaft_unterhalt")>0?"":" (Pauschale 20 %)"}`)); break;
+    case z==="22.1": { L.push(...srcLines(["krankheitskosten"])); const n=R.rows.find(x=>x.z==="21"); if(n) L.push(F(`Selbstbehalt 5 % des Nettoeinkommens: ${fmt(Math.max(0,n.s)*.05)} (Staat) bzw. ${fmt(Math.max(0,n.b)*.05)} (Bund). Abzugsfähig ist nur der Teil darüber.`)); break; }
+    case z==="22.2": L.push(...srcLines(["spenden"])); L.push(F("Abzugsfähig ab CHF 100 pro Jahr, höchstens 20 % des Nettoeinkommens nach Krankheitskosten.")); break;
+    case z==="24.1": (S.derived&&S.derived.kids||[]).forEach(k=>L.push({l:k.name+(k.age!=null?` (${k.age} Jahre)`:""),s:null,b:null})); L.push(F(`${R.kids} × ${fmt(Z.kinder)} (Staat) bzw. ${R.kids} × ${fmt(B.kinder)} (Bund)`)); break;
+    case z==="24.3": L.push(F(`Verheiratetenabzug nur bei der direkten Bundessteuer: ${fmt(B.verhAbzug)}`)); break;
+    case z==="7"||z==="19": rowsOf(["1.1","1.2","2.1","3.1","3.2","3.3","3.4","4.1","5.1","5.4","6"]).forEach(x=>L.push({l:"Ziffer "+x.z+" · "+x.l,s:x.s,b:x.b})); sum("Total der Einkünfte",R.ein); break;
+    case z==="18"||z==="20": rowsOf(["11.1","11.2","12","13.1","14.1","14.2","15","16.1","16.2","16.6","17"]).forEach(x=>L.push({l:"Ziffer "+x.z+" · "+x.l,s:x.s,b:x.b})); break;
+    case z==="21": { const e=R.rows.find(x=>x.z==="19"), a=R.rows.find(x=>x.z==="20"); L.push({l:"Ziffer 19 · Total der Einkünfte",s:e.s,b:e.b},{l:"minus Ziffer 20 · Total der Abzüge",s:-a.s,b:-a.b}); break; }
+    case z==="23": { const n=R.rows.find(x=>x.z==="21"); L.push({l:"Ziffer 21 · Nettoeinkommen",s:n.s,b:n.b}); rowsOf(["22.1","22.2"]).forEach(x=>L.push({l:"minus Ziffer "+x.z+" · "+x.l,s:-x.s,b:-x.b})); break; }
+    case z==="25"||z==="27": { const r23=R.rows.find(x=>x.z==="23"); L.push({l:"Ziffer 23 · Reineinkommen",s:r23.s,b:r23.b}); rowsOf(["24.1","24.3"]).forEach(x=>L.push({l:"minus Ziffer "+x.z+" · "+x.l,s:-x.s,b:-x.b})); L.push(F("Für die Tarifberechnung auf 100 Franken abgerundet: "+fmt(R.stE)+" (Staat) bzw. "+fmt(R.stB)+" (Bund)")); break; }
+    case /^3[0-5]|^31/.test(z): {
+      const map={"30.1":["bankguthaben","wertschriften_wert"],"30.2":["bargeld"],"30.3":["lebensversicherung"],"30.4":["fahrzeuge"],"30.6":["uebriges_vermoegen"],"31.1":["liegenschaft_steuerwert"],"34":["schulden"]};
+      if(map[z]) L.push(...srcLines(map[z]).map(x=>Object.assign(x,{b:null})));
+      if(z==="33") rowsOf(["30.1","30.2","30.3","30.4","30.6","31.1"]).forEach(x=>L.push({l:"Ziffer "+x.z+" · "+x.l,s:x.s,b:null}));
+      if(z==="35"||z==="37") L.push(F(`Ziffer 33 ${fmt(R.raw.v33)} minus Ziffer 34 Schulden ${fmt(R.raw.v34)}; für den Tarif auf 1000 Franken abgerundet: ${fmt(R.verm)}`));
+      break; }
+    default: { const keys=KEYZ(z); if(keys.length) L.push(...srcLines(keys, r.p)); }
+  }
+  return L.length ? L : null;
+}
+function detailTable(L){
+  const tb=el("tbody");
+  for(const x of L){
+    if(x.f){ tb.append(el("tr",{class:"f"}, el("td",{colspan:"4",text:x.f}))); continue; }
+    tb.append(el("tr",{class:x.sum?"dsum":null},
+      el("td",{}, x.l, x.low?el("span",{class:"flag low",text:"unsicher"}):null, x.ed?el("span",{class:"flag ed",text:"korrigiert"}):null),
+      el("td",{class:"src",text:x.src||""}),
+      el("td",{class:"r amt",text:x.s==null?"":fmt(x.s)}),
+      el("td",{class:"r amt",text:x.b==null?"":fmt(x.b)})));
+  }
+  return el("table",{class:"dtab"}, tb);
+}
+
+/* ---------- Personalien (Seite 1) ---------- */
+function renderPersonalien(){
+  const tb=$("persRows"); tb.replaceChildren();
+  const D=S.derived||{}, np=R.np, KN={keine:"keine / andere",reformiert:"evangelisch-reformiert",katholisch:"römisch-katholisch",christkatholisch:"christkatholisch"};
+  const head=(t)=>tb.append(el("tr",{class:"sec"}, el("td",{colspan:String(np+1),text:t})));
+  const row=(k,vals)=>tb.append(el("tr",{}, el("td",{class:"k",text:k}), ...vals.map(v=>el("td",{text:v==null||v===""?"–":v}))));
+  head("Steuerpflichtige Personen");
+  row("", [...Array(np).keys()].map(i=>"Person "+(i+1)));
+  const adults=D.adults||[];
+  row("Name", [...Array(np).keys()].map(i=>S.persons[i].name));
+  row("Geburtsdatum", [...Array(np).keys()].map(i=>{ const a=adults[i]; return a&&a.dob ? new Date(a.dob).toLocaleDateString("de-CH")+(a.age!=null?` (${a.age} Jahre)`:"") : null; }));
+  row("Konfession", [...Array(np).keys()].map(i=>S.konfessionen&&S.konfessionen[i] ? KN[S.konfessionen[i]]+(D.konfSrc?` (${D.konfSrc})`:"") : "offen"));
+  row("Arbeitgeber", [...Array(np).keys()].map(i=>S.persons[i].arbeitgeber||null));
+  row("Pensionskasse", [...Array(np).keys()].map(i=>S.persons[i].pk?"ja":"nein"));
+  row("Arbeitsweg", [...Array(np).keys()].map(i=>({oev:"ÖV",velo:"Velo",auto:"Auto",motorrad:"Motorrad",keine:"keiner",offen:"offen"})[S.persons[i].weg]||S.persons[i].weg));
+  head("Haushalt");
+  const one=(k,v)=>tb.append(el("tr",{}, el("td",{class:"k",text:k}), el("td",{colspan:String(np),text:v||"–"})));
+  one("Zivilstand", (S.zivil==="verheiratet"?"verheiratet / eingetragene Partnerschaft":"alleinstehend")+(D.zivilSrc?` (${D.zivilSrc})`:""));
+  one("Gemeinde", (S.gemeindeName||"offen")+` · Steuerfuss ${S.gfuss} %`+(D.gfussSrc?` (${D.gfussSrc})`:" (bitte prüfen)"));
+  one("Kirchensteuer", S.kfuss ? `${S.kfuss} %${S.kfussSchaetzung?" (geschätzt)":""}${S.kircheAnteil===0.5?" · halbe Kirchensteuer, nur eine Person Mitglied":""}${D.kfussSrc?` (${D.kfussSrc})`:""}` : (D.kfussSrc?"keine":"offen"));
+  if(D.unterstuetzte) one("Unterstützte Personen", String(D.unterstuetzte)+" (bitte Abzug Ziffer 24.2 prüfen)");
+  if(D.others&&D.others.length) one("Weitere Personen auf Belegen", D.others.join(", "));
+  head("Kinder");
+  const kids=D.kids||[];
+  if(!kids.length) one("Kinder","keine");
+  for(const k of kids){ const ab=S.overrides.ausbildung[k.name]; one(k.name, (k.age!=null?`${k.age} Jahre`:"Alter unbekannt")+(k.age!=null&&k.age<14?" · unter 14 (Betreuungsabzug möglich)":"")+(k.age!=null&&k.age>=18?(ab===true?" · in Ausbildung":ab===false?" · nicht in Ausbildung":""):"")); }
+  one("Kinderabzug für", `${S.kinder} Kind${S.kinder===1?"":"er"} · davon ${S.kinderU14} unter 14`);
+}
+
+/* ---------- Ausgelesene Werte pro Beleg ---------- */
+function renderBelege(){
+  const box=$("bvList"); box.replaceChildren();
+  for(const d of S.docs){
+    const who=d.person==="g"||d.person==null ? "" : " · "+TX.personName(S,d.person);
+    const vals={}; for(const p of ((d.result&&d.result.positionen)||[])) if(TX.KEYS[p.key]) vals[p.key]={v:(vals[p.key]?vals[p.key].v:0)+(+p.betrag||0),low:p.sicherheit==="tief"};
+    for(const [k,v] of Object.entries(d.edits||{})) if(TX.KEYS[k]) vals[k]={v:+v||0,ed:true};
+    const tb=el("tbody");
+    for(const [k,o] of Object.entries(vals)) tb.append(el("tr",{}, el("td",{}, el("span",{class:"z",text:TX.KEYS[k].z}), " ", TX.KEYS[k].l, o.low&&!o.ed?el("span",{class:"flag low",text:"unsicher"}):null, o.ed?el("span",{class:"flag ed",text:"korrigiert"}):null), el("td",{class:"r amt",text:fmt(o.v)})));
+    const r=d.result||{}, extra=[];
+    if(r.lohnausweis){ const la=r.lohnausweis; extra.push(["Arbeitgeber",la.arbeitgeber],["PK-Beiträge (Ziffer 10.1)",la.pk_beitraege!=null?fmt(la.pk_beitraege):""],["Kantine / Gratistransport / Geschäftsauto",[la.kantine?"Kantine":"",la.gratis_transport?"Gratistransport":"",la.geschaeftsauto?"Geschäftsauto":""].filter(Boolean).join(", ")||"nein"]); }
+    if(r.steuern){ const st=r.steuern; extra.push(["Gemeinde",st.gemeinde],["Steuerfuss Gemeinde",st.steuerfuss_gemeinde?st.steuerfuss_gemeinde+" %":""],["Steuerfuss Kirche",st.steuerfuss_kirche!=null?st.steuerfuss_kirche+" %":""],["Konfession",st.konfession]); }
+    if(r.personalien){ const pr=r.personalien; (pr.personen||[]).forEach((p,i)=>{ if(p) extra.push(["Person "+(i+1),[p.vorname,p.nachname].join(" ")+(p.konfession?" · "+p.konfession:"")+(p.beruf?" · "+p.beruf:"")]); }); (pr.kinder||[]).forEach(k=>extra.push(["Kind",[k.vorname,k.nachname].join(" ")+(k.geburtsdatum?" · "+k.geburtsdatum:"")+(k.ausbildung?" · in Ausbildung":"")])); }
+    for(const [k,v] of extra) if(v) tb.append(el("tr",{}, el("td",{class:"muted",text:k}), el("td",{class:"r",text:String(v)})));
+    const st={fertig:"ausgelesen",gespeichert:"gespeichert",fehler:"Fehler",lesen:"wird gelesen"}[d.status]||d.status;
+    box.append(el("article",{class:"card"},
+      el("h3",{}, el("span",{}, TX.typeName(d.type)+who, el("small",{text:d.name+(r.jahr?" · Jahr "+r.jahr:"")})), el("span",{class:"pill "+(d.status==="fertig"?"ok":d.status==="fehler"?"bad":"mute"),text:st})),
+      tb.children.length ? el("div",{class:"tablebox",style:"margin:0"}, el("table",{}, tb)) : el("p",{class:"none",text:"Keine Beträge übernommen."})));
+  }
+  if(!S.docs.length) box.append(el("p",{class:"note",text:"Noch keine Belege hochgeladen."}));
+}
+
 function renderRows(){
   FORM=buildForm();
   const hide=$("hideEmpty").checked, tb=$("rows"); tb.replaceChildren();
@@ -280,17 +441,26 @@ function renderRows(){
     if(hide && empty && r.kind==="wert") continue;
     const bTxt = r.staat ? "" : (Math.round(r.b||0) ? fmt(r.b) : "–");
     const cls=[r.kind==="wert"?"":(r.kind==="total"?"tot":r.kind), r.sub?"sub":"", empty?"nil":""].filter(Boolean).join(" ");
+    const det = empty ? null : detailsFor(r);
+    let dtr=null, dbtn=null;
+    if(det){
+      dtr=el("tr",{class:"detail",hidden:!$("allDetails").checked}, el("td",{colspan:"6"}, detailTable(det)));
+      dbtn=el("button",{class:"dbtn noprint",type:"button","aria-expanded":String($("allDetails").checked),text:"Herkunft"});
+      dbtn.addEventListener("click",()=>{ const o=dtr.hidden; dtr.hidden=!o; dbtn.setAttribute("aria-expanded",String(o)); });
+    }
     tb.append(el("tr",{class:cls||null},
       el("td",{class:"zc"}, el("span",{class:"z",text:r.z})),
       el("td",{class:"code",text:r.code!=null?String(r.code):""}),
-      el("td",{}, r.l, r.note?el("span",{class:"nt",text:r.note}):null),
+      el("td",{}, r.l, dbtn, r.note?el("span",{class:"nt",text:r.note}):null),
       el("td",{class:"r amt",text: Math.round(r.s||0) ? fmt(r.s) : "–"}),
       el("td",{class:"r amt",text:bTxt, style: !r.staat && !empty && Math.round(r.s)===Math.round(r.b) ? "color:var(--muted)" : null}),
       el("td",{class:"noprint"}, Math.round(r.s||0) ? copyBtn(r.s, "Ziffer "+r.z+" "+r.l) : (Math.round(r.b||0) ? copyBtn(r.b, "Ziffer "+r.z+" "+r.l+" Bund") : null))));
+    if(dtr) tb.append(dtr);
   }
-  renderHelpers(); renderCalc();
+  renderHelpers(); renderCalc(); renderPersonalien(); renderBelege();
 }
 $("hideEmpty").addEventListener("change",()=>renderRows());
+$("allDetails").addEventListener("change",()=>renderRows());
 
 function helperTable(title, ref, cols, lines){
   const tb=el("tbody");
