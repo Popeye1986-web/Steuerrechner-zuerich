@@ -1,0 +1,3 @@
+# GitHub Pages soll diese Website nicht veröffentlichen (sie läuft nur auf Vercel, mit Passwortschutz).
+# Diese Einstellung schliesst alle Dateien vom GitHub-Pages-Aufbau aus. Vercel ignoriert diese Datei.
+exclude: ["*", ".*"]
