@@ -589,8 +589,30 @@ $("print").addEventListener("click",()=>window.print());
     catch(e){ toast(e.message==="mail_not_configured" ? "E-Mail-Versand ist noch nicht eingerichtet (RESEND_API_KEY, MAIL_FROM)" : e.message==="not_configured" ? "Zahlung/Server ist noch nicht eingerichtet" : "Senden fehlgeschlagen"); }
     send.disabled=false; send.textContent="Formular an Kunde senden";
   });
+  // Neu berechnen: aktuellen Stand aus der Datenbank laden, mit den geltenden Regeln neu aufbauen und speichern
+  const recalc=el("button",{class:"btn small primary",type:"button",title:"Belege und Angaben neu laden und mit den aktuellen Regeln neu berechnen"},
+    el("span",{"aria-hidden":"true",text:"↻"}), " Neu berechnen");
+  const recalcInfo=el("span",{class:"muted",style:"font-size:13px"});
+  recalc.addEventListener("click",async()=>{
+    const vorher = R && R.T ? R.T.total : null;
+    recalc.disabled=true; recalc.lastChild.textContent=" Wird berechnet …";
+    try{
+      const fresh=await SP.loadFall(row.id);
+      if(!fresh) throw new Error("notfound");
+      Object.assign(row, fresh); TX.CASE.row=fresh;
+      S=TX.stateFromRow(fresh); TX.rebuild(S);
+      render();
+      try{ await SP.saveFall(row.id,{data:S}); }catch(_){}
+      const jetzt=R.T.total, zeit=new Date().toLocaleTimeString("de-CH",{hour:"2-digit",minute:"2-digit"});
+      const diff = vorher==null ? "" : Math.round(jetzt)===Math.round(vorher) ? " · keine Änderung" : ` · vorher ${chf(vorher)}, jetzt ${chf(jetzt)}`;
+      recalcInfo.textContent="Neu berechnet um "+zeit+diff;
+      toast("Neu berechnet"+(diff?diff.replace(" · ",": "):""));
+    }catch(e){ toast("Neu berechnen fehlgeschlagen. Bitte Seite neu laden."); }
+    recalc.disabled=false; recalc.lastChild.textContent=" Neu berechnen";
+  });
   $("caseBar").append(el("a",{class:"btn ghost small",href:"faelle.html",text:"← Alle Fälle"}),
     el("div",{class:"who"}, el("b",{text:TX.fallNr(row)+" · "+TX.fallName(row)}), el("span",{class:"muted",text:`${row.kunde_email||"E-Mail folgt bei der Bezahlung"} · Steuerjahr ${row.jahr}`})),
+    el("div",{style:"display:flex;flex-direction:column;gap:2px;align-items:flex-start"}, recalc, recalcInfo),
     el("div",{style:"display:flex;flex-direction:column;gap:2px;align-items:flex-start"}, send, sentInfo),
     el("label",{for:"statusSel",class:"label",text:"Status"}), sel);
   document.body.classList.remove("pending");
