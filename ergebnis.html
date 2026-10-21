@@ -343,13 +343,13 @@ function detailsFor(r){
       sum("Abzug (tieferer Wert von bezahlt und Höchstbetrag)",Math.min(R.versAkt,R.capS),Math.min(R.versAkt,R.capB)); break; }
     case z==="16.2": L.push(...srcLines(["weiterbildung"])); L.push(F(`Höchstens ${fmt(Z.weiterb)} (Staat) bzw. ${fmt(B.weiterb)} (Bund) pro Person`)); break;
     case z==="16.6": L.push(...srcLines(["kinderbetreuung"])); L.push(F(`${R.kidsU14} Kind${R.kidsU14===1?"":"er"} unter 14 × höchstens ${fmt(Z.betreuung)} (Staat) bzw. ${fmt(B.betreuung)} (Bund)`)); break;
-    case z==="17": if(R.np===2){ P.forEach(x=>L.push({l:"Erwerbseinkommen "+TX.personName(S,x.p),s:x.erwerb,b:x.erwerb})); L.push(F(`Tieferes Erwerbseinkommen ${fmt(R.raw.lower)}. Staat: Pauschale ${fmt(Z.zweiverd)} (höchstens das tiefere Einkommen). Bund: 50 % davon, mindestens ${fmt(B.zwMin)}, höchstens ${fmt(B.zwMax)}.`)); } break;
-    case z==="6": L.push(...srcLines(["eigenmietwert","mietertrag","liegenschaft_unterhalt"])); L.push(F(`Bruttoertrag ${fmt(R.raw.liegBrutto)} abzüglich Unterhalt ${fmt(R.raw.liegUnt)}${TX.valueOf(S,"liegenschaft_unterhalt")>0?"":" (Pauschale 20 %)"}`)); break;
+    case z==="17": if(R.np===2){ P.forEach(x=>{ const bs=x.fahrS+x.verpf+x.uebrige+x.nebenP, bb=x.fahrB+x.verpf+x.uebrige+x.nebenP; L.push({l:"Erwerbseinkommen "+TX.personName(S,x.p)+" nach Berufsauslagen, Säule 3a und PK-Einkauf",s:Math.max(0,x.erwerb-bs-x.s3a-x.pkEinkauf),b:Math.max(0,x.erwerb-bb-x.s3a-x.pkEinkauf)}); }); L.push(F(`Massgebend ist das tiefere Erwerbseinkommen: ${fmt(R.raw.lowerS)} (Staat) bzw. ${fmt(R.raw.lowerB)} (Bund). Staat: ${fmt(Z.zweiverd)}, höchstens das tiefere Einkommen (§ 31 Abs. 2 StG). Bund: 50 % davon, mindestens ${fmt(B.zwMin)}, höchstens ${fmt(B.zwMax)} (Art. 33 Abs. 2 DBG).`)); } break;
+    case z==="6": L.push(...srcLines(["eigenmietwert","mietertrag","liegenschaft_unterhalt"])); L.push(F(`Bruttoertrag ${fmt(R.raw.liegBrutto)} abzüglich Unterhalt ${fmt(R.raw.liegUnt)} (Staat) bzw. ${fmt(R.raw.liegUntB)} (Bund)${TX.valueOf(S,"liegenschaft_unterhalt")>0?" (effektive Kosten)":" (Pauschale: Staat 20 %, Bund 10 % bei Gebäuden bis 10 Jahre, sonst 20 %)"}`)); break;
     case z==="22.1": { L.push(...srcLines(["krankheitskosten"])); const n=R.rows.find(x=>x.z==="21"); if(n) L.push(F(`Selbstbehalt 5 % des Nettoeinkommens: ${fmt(Math.max(0,n.s)*.05)} (Staat) bzw. ${fmt(Math.max(0,n.b)*.05)} (Bund). Abzugsfähig ist nur der Teil darüber.`)); break; }
-    case z==="22.2": L.push(...srcLines(["spenden"])); L.push(F("Abzugsfähig ab CHF 100 pro Jahr, höchstens 20 % des Nettoeinkommens nach Krankheitskosten.")); break;
+    case z==="22.2": L.push(...srcLines(["spenden"])); L.push(F("Abzugsfähig ab CHF 100 pro Jahr. Höchstens 20 %: Staat vom Nettoeinkommen Ziffer 21 (§ 32 lit. b StG), Bund vom Nettoeinkommen nach Krankheitskosten (Art. 33a DBG).")); break;
     case z==="24.1": (S.derived&&S.derived.kids||[]).forEach(k=>L.push({l:k.name+(k.age!=null?` (${k.age} Jahre)`:""),s:null,b:null})); L.push(F(`${R.kids} × ${fmt(Z.kinder)} (Staat) bzw. ${R.kids} × ${fmt(B.kinder)} (Bund)`)); break;
     case z==="24.3": L.push(F(`Verheiratetenabzug nur bei der direkten Bundessteuer: ${fmt(B.verhAbzug)}`)); break;
-    case z==="7"||z==="19": rowsOf(["1.1","1.2","2.1","3.1","3.2","3.3","3.4","4.1","5.1","5.4","6"]).forEach(x=>L.push({l:"Ziffer "+x.z+" · "+x.l,s:x.s,b:x.b})); sum("Total der Einkünfte",R.ein); break;
+    case z==="7"||z==="19": rowsOf(["1.1","1.2","2.1","3.1","3.2","3.3","3.4","4.1","5.1","5.4","6"]).forEach(x=>L.push({l:"Ziffer "+x.z+" · "+x.l,s:x.s,b:x.b})); sum("Total der Einkünfte",R.ein,R.einB); break;
     case z==="18"||z==="20": rowsOf(["11.1","11.2","12","13.1","14.1","14.2","15","16.1","16.2","16.6","17"]).forEach(x=>L.push({l:"Ziffer "+x.z+" · "+x.l,s:x.s,b:x.b})); break;
     case z==="21": { const e=R.rows.find(x=>x.z==="19"), a=R.rows.find(x=>x.z==="20"); L.push({l:"Ziffer 19 · Total der Einkünfte",s:e.s,b:e.b},{l:"minus Ziffer 20 · Total der Abzüge",s:-a.s,b:-a.b}); break; }
     case z==="23": { const n=R.rows.find(x=>x.z==="21"); L.push({l:"Ziffer 21 · Nettoeinkommen",s:n.s,b:n.b}); rowsOf(["22.1","22.2"]).forEach(x=>L.push({l:"minus Ziffer "+x.z+" · "+x.l,s:-x.s,b:-x.b})); break; }
@@ -523,7 +523,7 @@ function renderCalc(){
   h("Direkte Bundessteuer");
   row("Steuerbares Einkommen (Ziffer 27), auf 100 abgerundet", R.stB);
   row("Tarif", fam ? "Tarif für Verheiratete und Alleinerziehende (Art. 36 Abs. 2 DBG)" : "Grundtarif (Art. 36 Abs. 1 DBG)");
-  const vor=TX.bundTarif(R.stB, fam);
+  const vor=TX.bundTarif(R.stB, fam, S.year);
   row("Steuer gemäss Tarif", vor);
   if(fam && kids) row(`Elterntarif: Ermässigung ${kids} × CHF 263`, -Math.min(vor, 263*kids));
   row("Direkte Bundessteuer", T.bund, "sum");

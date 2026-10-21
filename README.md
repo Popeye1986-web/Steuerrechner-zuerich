@@ -72,6 +72,10 @@ Mit dem Testschlüssel `sk_test_…` und der Testkarte `4242 4242 4242 4242`, be
 - Du kannst weiterhin selbst Fälle eröffnen (`faelle.html` → Neuer Fall), z.B. wenn dir ein Kunde Belege per Post schickt.
 - AGB und Datenschutzerklärung sind auf der Bezahlseite verlinkt, aber noch Platzhalter (`#`).
 
+## Berechnung prüfen
+
+`node tests/rechnen.test.js` prüft die Steuerberechnung mit über 90 Fällen: Bundessteuertarif 2025 und 2026 an jeder amtlichen Tarifstufe, Zürcher Tarife, alle Abzugsregeln, Rundungen. Nach jeder Änderung an `taxcore.js` ausführen. Alle Werte stammen aus amtlichen Quellen (siehe Kommentar oben in `taxcore.js`).
+
 ## Grenzen
 
 - PDFs bis 3 MB werden ausgelesen, grössere nur gespeichert.

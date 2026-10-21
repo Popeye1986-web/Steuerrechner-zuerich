@@ -611,6 +611,9 @@ function renderQuestions(){
     } else if(q.id==="konf"){
       for(const [v,t] of [["keine","Nein"],["reformiert","Reformiert"],["katholisch","Römisch-katholisch"],["christkatholisch","Christkatholisch"]])
         row.append(el("button",{class:"btn small",type:"button",text:t,onclick:()=>{ o.konfession=v; commit(); }}));
+    } else if(q.id==="liegalter"){
+      row.append(el("button",{class:"btn small",type:"button",text:"Ja, jünger als 10 Jahre",onclick:()=>{o.liegJung=true; commit();}}),
+                 el("button",{class:"btn small",type:"button",text:"Nein, älter",onclick:()=>{o.liegJung=false; commit();}}));
     } else if(q.id.startsWith("ausb:")){
       row.append(el("button",{class:"btn small",type:"button",text:"Ja",onclick:()=>{o.ausbildung[q.kid]=true; commit();}}),
                  el("button",{class:"btn small",type:"button",text:"Nein",onclick:()=>{o.ausbildung[q.kid]=false; commit();}}));

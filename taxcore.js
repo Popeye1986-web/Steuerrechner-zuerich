@@ -5,7 +5,12 @@ window.TX = (function () {
   const INF = Infinity;
 
   /* ---------- Tarife und Abzüge ---------- */
-  // Quellen: ZStB Nr. 48.1 (ab 2024 / ab 2026), Formular Steuererklärung ZH 2025, ESTV-Rundschreiben 2026.
+  // Quellen (amtlich):
+  // - Staatssteuer 2026: Steuergesetz ZH LS 631.1 §§ 26, 31, 34, 35, 47 (zhlex, Fassung ab 2026) und ESTV-Kantonsblatt ZH (Stand Feb. 2026)
+  // - Staatssteuer 2025: Quellensteuer-Grundlagen KStA ZH 2025 (Abzüge), Wegleitung ZH 2025 (Berufsauslagen)
+  //   Noch NICHT amtlich bestätigt: Tarifstufen 2025 und Drittbetreuung 2025 (25'000), siehe tests/rechnen.test.js
+  // - Staatssteuerfuss: zh.ch «Aktuelle Gemeindesteuerfüsse» (2025: 98 %, 2026: 95 %)
+  // - Bund: ESTV-Rundschreiben 2-210-D-2024 (2025), 2-216-D-2025 und 2-215-D-2025 (2026), Medienmitteilung EFD 11.9.2025
   const ZH = {
     2025: { kfuss: 98, kmAuto: .70,
       grund: [[6900,0],[4900,2],[4800,3],[7900,4],[9600,5],[11000,6],[12900,7],[17400,8],[33600,9],[33200,10],[52700,11],[68400,12],[INF,13]],
@@ -20,9 +25,18 @@ window.TX = (function () {
       vverh: [[161000,0],[242000,.5],[402000,1],[646000,1.5],[967000,2],[967000,2.5],[INF,3]],
       kinder: 9400, zweiverd: 6200, betreuung: 25300, weiterb: 12600, fahrMax: 5200, vers: { single: 2900, verh: 5800, kind: 1300 } }
   };
+  // Direkte Bundessteuer, Tarif Art. 36 DBG. Quelle: ESTV-Rundschreiben 2-210-D-2024 (Steuerjahr 2025)
+  // und 2-216-D-2025 (Steuerjahr 2026). Pro Zeile: ab Einkommen, Steuer bei dieser Schwelle, Zuschlag je weitere 100 Franken.
+  const BUND_TARIF = {
+    2025: {
+      single: [[15200,0,.77],[33200,138.60,.88],[43500,229.20,2.64],[58000,612.00,2.97],[76100,1149.55,5.94],[82000,1500.00,6.60],[108800,3268.80,8.80],[141500,6146.40,11.00],[184900,10920.40,13.20]], singleFlat: 793400,
+      verh: [[29700,0,1],[53400,237,2],[61300,395,3],[79100,929,4],[94900,1561,5],[108600,2246,6],[120500,2960,7],[130500,3660,8],[138300,4284,9],[144200,4815,10],[148200,5215,11],[150300,5446,12],[152300,5686,13]], verhFlat: 940900 },
+    2026: {
+      single: [[15200,0,.77],[33200,138.60,.88],[43500,229.20,2.64],[58000,612.00,2.97],[76200,1152.50,5.94],[82100,1502.95,6.60],[108900,3271.75,8.80],[141500,6140.55,11.00],[185100,10936.55,13.20]], singleFlat: 794000,
+      verh: [[29700,0,1],[53400,237,2],[61300,395,3],[79100,929,4],[94900,1561,5],[108700,2251,6],[120600,2965,7],[130500,3658,8],[138400,4290,9],[144300,4821,10],[148300,5221,11],[150400,5452,12],[152400,5692,13]], verhFlat: 941400 }
+  };
+  // Abzüge direkte Bundessteuer 2025 und 2026 (unverändert gemäss ESTV, ausser Autokilometer 2026: 0.75)
   const BUND = {
-    single: [[15200,0,.77],[33200,138.60,.88],[43500,229.20,2.64],[58000,612.00,2.97],[76200,1152.50,5.94],[82100,1502.95,6.60],[108900,3271.75,8.80],[141500,6140.55,11.00],[185100,10936.55,13.20]], singleFlat: 794000,
-    verh: [[29700,0,1],[53400,237,2],[61300,395,3],[79100,929,4],[94900,1561,5],[108700,2251,6],[120600,2965,7],[130500,3658,8],[138400,4290,9],[144300,4821,10],[148300,5221,11],[150400,5452,12],[152400,5692,13]], verhFlat: 941400,
     kmAuto: { 2025: .70, 2026: .75 }, fahrMax: 3300, kinder: 6800, verhAbzug: 2800, eltern: 263, betreuung: 25800, weiterb: 13000,
     vers: { verhMit: 3700, verhOhne: 5550, mit: 1800, ohne: 2700, kind: 700 }, zwMin: 8600, zwMax: 14100
   };
@@ -254,9 +268,10 @@ window.TX = (function () {
 
   /* ---------- Steuerberechnung ---------- */
   function stufen(inc, table, factor) { let rest = Math.max(0, inc), t = 0; for (const [w, r] of table) { const part = Math.min(rest, w); t += part * r / factor; rest -= part; if (rest <= 0) break; } return t; }
-  function bundTarif(inc, verh) {
-    const tab = verh ? BUND.verh : BUND.single, flat = verh ? BUND.verhFlat : BUND.singleFlat;
-    if (inc >= flat) return inc * 0.115;
+  function bundTarif(inc, verh, year) {
+    const B = BUND_TARIF[year] || BUND_TARIF[2026];
+    const tab = verh ? B.verh : B.single, flat = verh ? B.verhFlat : B.singleFlat;
+    if (inc >= flat) return Math.floor(inc / 100) * 100 * 0.115;
     let t = 0; for (const [thr, base, rate] of tab) { if (inc >= thr) t = base + Math.floor((inc - thr) / 100) * rate; }
     return t;
   }
@@ -267,7 +282,7 @@ window.TX = (function () {
     const einf = einfE + einfV;
     const kanton = einf * Z.kfuss / 100, gemeinde = einf * (+S.gfuss || 0) / 100, kirche = einf * (+S.kfuss || 0) / 100 * (S.kircheAnteil == null ? 1 : S.kircheAnteil);
     const personal = PERSONALSTEUER * (verh ? 2 : 1);
-    let bund = bundTarif(stB, fam) - (fam ? BUND.eltern * kids : 0);
+    let bund = bundTarif(stB, fam, S.year) - (fam ? BUND.eltern * kids : 0);
     bund = Math.max(0, bund); if (bund < 25) bund = 0;
     return { einfE, einfV, einf, kanton, gemeinde, kirche, personal, bund, total: kanton + gemeinde + kirche + personal + bund, fam };
   }
@@ -312,25 +327,32 @@ window.TX = (function () {
 
     // Seite 2: Einkünfte
     const sec1 = "Einkünfte (Seite 2)";
-    let ein = 0;
-    for (const x of P) if (x.lohn) { R("1.1", "Haupterwerb" + nameP(x.p), x.lohn, x.lohn, "wert", sec1, "", x.p); ein += x.lohn; }
-    for (const x of P) if (x.neben) { R("1.2", "Nebenerwerb" + nameP(x.p), x.neben, x.neben, "wert", sec1, "", x.p); ein += x.neben; }
-    for (const x of P) if (x.selbst) { R("2.1", "Selbständige Erwerbstätigkeit" + nameP(x.p), x.selbst, x.selbst, "wert", sec1, "", x.p); ein += x.selbst; }
+    let einS = 0;
+    for (const x of P) if (x.lohn) { R("1.1", "Haupterwerb" + nameP(x.p), x.lohn, x.lohn, "wert", sec1, "", x.p); einS += x.lohn; }
+    for (const x of P) if (x.neben) { R("1.2", "Nebenerwerb" + nameP(x.p), x.neben, x.neben, "wert", sec1, "", x.p); einS += x.neben; }
+    for (const x of P) if (x.selbst) { R("2.1", "Selbständige Erwerbstätigkeit" + nameP(x.p), x.selbst, x.selbst, "wert", sec1, "", x.p); einS += x.selbst; }
     const e31 = tot("ahv_rente"), e32 = tot("pk_rente"), e33 = tot("alv"), e34 = tot("taggelder");
-    if (e31) { R("3.1", "AHV-/IV-Renten (100 %)", e31, e31, "wert", sec1); ein += e31; }
-    if (e32) { R("3.2", "Renten / Pensionen", e32, e32, "wert", sec1); ein += e32; }
-    if (e33) { R("3.3", "Erwerbsausfallentschädigungen Arbeitslosenversicherung", e33, e33, "wert", sec1); ein += e33; }
-    if (e34) { R("3.4", "Kinder-/Familienzulagen, Mutterschaft, Taggelder", e34, e34, "wert", sec1); ein += e34; }
+    if (e31) { R("3.1", "AHV-/IV-Renten (100 %)", e31, e31, "wert", sec1); einS += e31; }
+    if (e32) { R("3.2", "Renten / Pensionen", e32, e32, "wert", sec1); einS += e32; }
+    if (e33) { R("3.3", "Erwerbsausfallentschädigungen Arbeitslosenversicherung", e33, e33, "wert", sec1); einS += e33; }
+    if (e34) { R("3.4", "Kinder-/Familienzulagen, Mutterschaft, Taggelder", e34, e34, "wert", sec1); einS += e34; }
     const e41 = tot("wertschriftenertrag");
-    if (e41) { R("4.1", "Ertrag aus Wertschriften, Guthaben und Lotterien", e41, e41, "wert", sec1); ein += e41; }
+    if (e41) { R("4.1", "Ertrag aus Wertschriften, Guthaben und Lotterien", e41, e41, "wert", sec1); einS += e41; }
     const e51 = tot("unterhalt_erhalten"), e54 = tot("uebrige_einkuenfte");
-    if (e51) { R("5.1", "Unterhaltsbeiträge", e51, e51, "wert", sec1); ein += e51; }
-    if (e54) { R("5.4", "Weitere Einkünfte", e54, e54, "wert", sec1); ein += e54; }
+    if (e51) { R("5.1", "Unterhaltsbeiträge", e51, e51, "wert", sec1); einS += e51; }
+    if (e54) { R("5.4", "Weitere Einkünfte", e54, e54, "wert", sec1); einS += e54; }
+    // Liegenschaftsunterhalt: effektive Kosten oder Pauschale. Staat ZH: 20 % (Merkblatt KStA).
+    // Bund: 10 % bei Gebäuden bis 10 Jahre alt, sonst 20 % (Liegenschaftskostenverordnung, SR 642.116).
     const liegBrutto = tot("eigenmietwert") + tot("mietertrag");
-    const liegUnt = tot("liegenschaft_unterhalt") > 0 ? tot("liegenschaft_unterhalt") : liegBrutto * 0.2;
-    const e6 = liegBrutto - liegUnt;
-    if (liegBrutto) { R("6", "Nettoertrag aus Liegenschaften", e6, e6, "wert", sec1, tot("liegenschaft_unterhalt") > 0 ? "" : "Unterhalt pauschal 20 %"); ein += e6; }
-    R("7", "Total der Einkünfte", ein, ein, "summe", sec1);
+    const liegEff = tot("liegenschaft_unterhalt") > 0;
+    const liegJung = !!(S.overrides && S.overrides.liegJung);
+    const liegUnt = liegEff ? tot("liegenschaft_unterhalt") : liegBrutto * 0.2;
+    const liegUntB = liegEff ? liegUnt : liegBrutto * (liegJung ? 0.1 : 0.2);
+    const e6 = liegBrutto - liegUnt, e6B = liegBrutto - liegUntB;
+    let einB = einS;
+    if (liegBrutto) { R("6", "Nettoertrag aus Liegenschaften", e6, e6B, "wert", sec1, liegEff ? "" : "Unterhalt pauschal: Staat 20 %, Bund " + (liegJung ? "10 % (Gebäude bis 10 Jahre)" : "20 %")); einS += e6; einB += e6B; }
+    const ein = einS;
+    R("7", "Total der Einkünfte", einS, einB, "summe", sec1);
 
     // Seite 3: Abzüge
     const sec2 = "Abzüge (Seite 3)";
@@ -355,21 +377,27 @@ window.TX = (function () {
     addA("16.2", "Berufsorientierte Aus- und Weiterbildungskosten", wbS, wbB);
     const betr = tot("kinderbetreuung");
     addA("16.6", "Abzug für fremdbetreute Kinder", Math.min(betr, Z.betreuung * kidsU14), Math.min(betr, BUND.betreuung * kidsU14), betr && !kidsU14 ? "Nur für Kinder unter 14" : "");
-    const lower = np === 2 ? Math.min(P[0].erwerb, P[1].erwerb) : 0;
-    if (np === 2 && lower > 0) addA("17", "Sonderabzug bei Erwerbstätigkeit beider Ehegatten", Math.min(Z.zweiverd, lower), lower < BUND.zwMin ? lower : clamp(lower * .5, BUND.zwMin, BUND.zwMax));
+    // Zweiverdienerabzug: massgebend ist das Erwerbseinkommen nach Berufsauslagen, Säule 3a und Einkauf 2. Säule
+    // (Art. 33 Abs. 2 DBG). Abzug nur, wenn beide ein Erwerbseinkommen erzielen.
+    const netErwS = x => Math.max(0, x.erwerb - (x.fahrS + x.verpf + x.uebrige + x.nebenP) - x.s3a - x.pkEinkauf);
+    const netErwB = x => Math.max(0, x.erwerb - (x.fahrB + x.verpf + x.uebrige + x.nebenP) - x.s3a - x.pkEinkauf);
+    const beide = np === 2 && P[0].erwerb > 0 && P[1].erwerb > 0;
+    const lowerS = beide ? Math.min(netErwS(P[0]), netErwS(P[1])) : 0, lowerB = beide ? Math.min(netErwB(P[0]), netErwB(P[1])) : 0;
+    const lower = lowerB;
+    if (beide && (lowerS > 0 || lowerB > 0)) addA("17", "Sonderabzug bei Erwerbstätigkeit beider Ehegatten", Math.min(Z.zweiverd, lowerS), lowerB < BUND.zwMin ? lowerB : clamp(lowerB * .5, BUND.zwMin, BUND.zwMax));
     R("18", "Total der Abzüge", abS, abB, "summe", sec2);
 
     // Einkommensberechnung
     const sec3 = "Einkommensberechnung (Seite 3)";
-    R("19", "Total der Einkünfte", ein, ein, "wert", sec3);
+    R("19", "Total der Einkünfte", einS, einB, "wert", sec3);
     R("20", "Total der Abzüge", abS, abB, "wert", sec3);
-    const nS = ein - abS, nB = ein - abB;
+    const nS = einS - abS, nB = einB - abB;
     R("21", "Nettoeinkommen", nS, nB, "summe", sec3);
     const kk = tot("krankheitskosten");
     const k221S = Math.max(0, kk - Math.max(0, nS) * .05), k221B = Math.max(0, kk - Math.max(0, nB) * .05);
     if (kk) R("22.1", "Krankheits- und Unfallkosten", k221S, k221B, "wert", sec3, "Abzug über 5 % Selbstbehalt");
     const sp = tot("spenden");
-    const k222S = sp >= 100 ? Math.min(sp, Math.max(0, nS - k221S) * .2) : 0, k222B = sp >= 100 ? Math.min(sp, Math.max(0, nB - k221B) * .2) : 0;
+    const k222S = sp >= 100 ? Math.min(sp, Math.max(0, nS) * .2) : 0, k222B = sp >= 100 ? Math.min(sp, Math.max(0, nB - k221B) * .2) : 0;
     if (sp) R("22.2", "Gemeinnützige Zuwendungen", k222S, k222B, "wert", sec3, sp < 100 ? "Erst ab CHF 100 abzugsfähig" : "");
     const rS = nS - k221S - k222S, rB = nB - k221B - k222B;
     R("23", "Reineinkommen", rS, rB, "summe", sec3);
@@ -394,9 +422,9 @@ window.TX = (function () {
     const T = taxes(S, stE, stB, verm);
     const T2 = taxes(S, stE + 1000, stB + 1000, verm);
     const grenz = (T2.total - T.total) / 1000;
-    const raw = { e25s: rS - soS, e25b: rB - soB, v33, v34, v35: v33 - v34, liegBrutto, liegUnt, lower };
+    const raw = { e25s: rS - soS, e25b: rB - soB, v33, v34, v35: v33 - v34, liegBrutto, liegUnt, liegUntB, lower, lowerS, lowerB };
     const wert = { bank: tot("bankguthaben"), depot: tot("wertschriften_wert"), ertrag: e41 };
-    return { y, Z, P, rows, ein, stE, stB, verm, T, grenz, versAkt, capS, capB, ohneVorsorge, raw, wert, vst: tot("verrechnungssteuer"), np, verh, kids, kidsU14 };
+    return { y, Z, P, rows, ein, einB, stE, stB, verm, T, grenz, versAkt, capS, capB, ohneVorsorge, raw, wert, vst: tot("verrechnungssteuer"), np, verh, kids, kidsU14 };
   }
 
   /* ---------- Haushalt aus den Belegen ableiten ---------- */
@@ -407,7 +435,6 @@ window.TX = (function () {
 
   const PRIOR = ["steuerrechnung", "steuererklaerung"];
   const KIRCHE = ["reformiert", "katholisch", "christkatholisch"];
-  const KFUSS_SCHAETZUNG = 10; // typischer Kirchensteuerfuss im Kanton Zürich, bis der genaue Wert bekannt ist
   function rebuild(S) {
     const O = S.overrides = S.overrides || {};
     O.persons = O.persons || [{}, {}];
@@ -521,7 +548,7 @@ window.TX = (function () {
     if (O.kfuss != null) { S.kfuss = O.kfuss; kfussSrc = "Ihre Angabe"; }
     else if (members === 0) { S.kfuss = 0; kfussSrc = konfSrc; }
     else if (st.steuerfuss_kirche != null && st.steuerfuss_kirche !== "" && !(+st.steuerfuss_kirche === 0 && members)) { S.kfuss = +st.steuerfuss_kirche || 0; kfussSrc = "Steuerrechnung"; }
-    else if (members) { S.kfuss = KFUSS_SCHAETZUNG; S.kfussSchaetzung = true; }
+    else if (members) { S.kfuss = 0; } // Kirchensteuerfuss noch unbekannt: keine Schätzung, Prüfer trägt den amtlichen Wert ein
     else { S.kfuss = 0; }
 
     // 6. Situation für die Belegliste
@@ -550,8 +577,9 @@ window.TX = (function () {
     const q = [];
     if (!O.zivil && !zivilAuto) q.push({ id: "zivil", text: `Sind ${adults[0] ? adults[0].vorname : "Sie"} und ${adults[1] ? adults[1].vorname : "die zweite Person"} verheiratet?`, why: "Unverheiratete Paare machen je eine eigene Steuererklärung." });
     if (!gfussSrc) q.push({ id: "gfuss", text: S.gemeindeName ? `Wie hoch ist der Steuerfuss von ${S.gemeindeName}?` : "In welcher Gemeinde wohnen Sie, und wie hoch ist der Steuerfuss?", why: "Steht auf Ihrer letzten Steuerrechnung oder unter zh.ch/steuerfuesse." });
-    if (!kfussSrc) q.push({ id: "kirche", konfBekannt: !!konfs, text: S.konfession ? `Wie hoch ist der Kirchensteuerfuss (${S.konfession})?` : "Sind Sie Mitglied einer Landeskirche?", why: S.kfussSchaetzung ? `Geschätzt mit ${KFUSS_SCHAETZUNG} %. Der genaue Wert steht auf der letzten Steuerrechnung.` : "Für die Kirchensteuer. Steht auf der letzten Steuerrechnung." });
+    if (!kfussSrc) q.push({ id: "kirche", konfBekannt: !!konfs, text: S.konfession ? `Wie hoch ist der Kirchensteuerfuss (${S.konfession})?` : "Sind Sie Mitglied einer Landeskirche?", why: "Für die Kirchensteuer. Steht auf der letzten Steuerrechnung oder bei der Gemeinde." });
     for (let i = 0; i < np; i++) if (S.persons[i].weg === "offen") q.push({ id: "weg" + i, person: i, text: `Wie kommt ${S.persons[i].name.split(" ")[0]} zur Arbeit?`, why: "Für den Fahrkostenabzug. Mit ÖV-Abo einfach die Quittung hochladen." });
+    if (S.docs.some(d => d.type === "liegenschaft") && O.liegJung == null && !S.items.some(i => i.key === "liegenschaft_unterhalt" && +i.amount > 0)) q.push({ id: "liegalter", text: "Ist das Gebäude Ihrer Liegenschaft jünger als 10 Jahre?", why: "Für die Pauschale der Unterhaltskosten bei der Bundessteuer: 10 % bei neueren, 20 % bei älteren Gebäuden." });
     for (const k of kidList) if (k.age != null && k.age >= 18 && k.age < 26 && ausb(k.name) == null) q.push({ id: "ausb:" + k.name, kid: k.name, text: `Ist ${k.name.split(" ")[0]} (${k.age}) noch in Ausbildung?`, why: "Dann gibt es den Kinderabzug weiterhin." });
 
     const miss = [];
@@ -616,7 +644,7 @@ window.TX = (function () {
     v("5.4","Weitere Einkünfte",g("5.4"),{sub:1});
     v("5.5","Kapitalabfindungen für wiederkehrende Leistungen",one(0),{sub:1});
     v("6","Nettoertrag aus Liegenschaften",g("6"),{note: R.raw.liegBrutto ? `Bruttoertrag ${nf.format(R.raw.liegBrutto)} abzüglich Unterhalt ${nf.format(R.raw.liegUnt)}` : ""});
-    sum("7","Total der Einkünfte",R.ein,R.ein,{note:"Übertrag auf Seite 3, Ziffer 19"});
+    sum("7","Total der Einkünfte",R.ein,R.einB,{note:"Übertrag auf Seite 3, Ziffer 19"});
 
     page("Seite 3 · Abzüge");
     head("11","Berufsauslagen bei unselbständiger Erwerbstätigkeit");
@@ -641,7 +669,7 @@ window.TX = (function () {
     sum("18","Total der Abzüge",t18.s,t18.b,{note:"Übertrag in Ziffer 20"});
 
     page("Seite 3 · Einkommensberechnung");
-    v("19","Total der Einkünfte",one(R.ein),{note:"Übertrag von Ziffer 7"});
+    v("19","Total der Einkünfte",{s:R.ein,b:R.einB},{note:"Übertrag von Ziffer 7"});
     v("20","Total der Abzüge",t18,{note:"Übertrag von Ziffer 18"});
     const n21=g("21"); sum("21","Nettoeinkommen",n21.s,n21.b);
     head("22","Zusätzliche Abzüge");
