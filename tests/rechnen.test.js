@@ -101,5 +101,18 @@ const row = (R, z, p) => R.rows.find(r => r.z === z && (p === undefined || r.p =
 { const { R } = fall(2025, { items: [["nettolohn", 0, 5000], ["schuldzinsen", "g", 90000], ["schulden", "g", 900000]] });
   truthy("keine negativen Steuern", R.T.total >= 0 && R.stE >= 0 && R.stB >= 0 && R.verm >= 0); }
 
+/* 4. Regel Lohnausweis: Feld F nicht angekreuzt und keine ÖV-Quittung → Fahrkosten-Pauschale 700 */
+function mitBelegen(docs) {
+  const S = TX.emptyState(2025);
+  S.docs = docs.map((r, i) => ({ id: "d" + i, name: "b" + i, type: r.dokumenttyp, status: "fertig", result: r, edits: {} }));
+  TX.rebuild(S); return { S, R: TX.calc(S) };
+}
+const lohn = (F) => ({ dokumenttyp: "lohnausweis", jahr: 2025, inhaber: { vorname: "Anna", nachname: "Meier" }, personen: [], lohnausweis: { gratis_transport: F, kantine: false, geschaeftsauto: false, pk_beitraege: 5000 }, positionen: [{ key: "nettolohn", betrag: 80000 }] });
+{ const { S, R } = mitBelegen([lohn(false)]); check("Feld F leer, kein ÖV → Pauschale Staat", R.P[0].fahrS, 700); check("… und Bund", R.P[0].fahrB, 700);
+  truthy("keine Frage zum Arbeitsweg", !S.derived.questions.some(q => q.id.startsWith("weg"))); }
+{ const { R } = mitBelegen([lohn(true)]); check("Feld F angekreuzt → keine Fahrkosten", R.P[0].fahrS, 0); }
+{ const { R } = mitBelegen([lohn(false), { dokumenttyp: "oev", jahr: 2025, inhaber: { vorname: "Anna", nachname: "Meier" }, personen: [], positionen: [{ key: "oev_abo", betrag: 2100 }] }]);
+  check("ÖV-Quittung → effektive Abokosten", R.P[0].fahrS, 2100); }
+
 console.log(`\n${ok} Prüfungen bestanden, ${fail} fehlgeschlagen`);
 process.exit(fail ? 1 : 0);

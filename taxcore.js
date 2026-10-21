@@ -302,7 +302,7 @@ window.TX = (function () {
         const km = +pe.km || 0, tage = +pe.tage || 0;
         switch (pe.weg) {
           case "oev": return totP("oev_abo", p);
-          case "velo": return 700;
+          case "velo": case "pauschal": return 700;
           case "auto": return km * 2 * tage * (t === "b" ? BUND.kmAuto[y] : Z.kmAuto);
           case "motorrad": return km * 2 * tage * .40;
           default: return 0;
@@ -495,7 +495,8 @@ window.TX = (function () {
         pk: o.pk != null ? o.pk : !(la && la.pk_beitraege === 0),
         verpflegung: o.verpflegung || (la && la.kantine ? "verbilligt" : "voll"),
         geschaeftsauto: o.geschaeftsauto != null ? o.geschaeftsauto : !!(la && la.geschaeftsauto),
-        weg: o.weg || (hasAbo ? "oev" : la ? (la.gratis_transport ? "keine" : "offen") : "keine"),
+        // Regel: Lohnausweis ohne Kreuz bei Feld F (keine Gratisbeförderung) und keine ÖV-Quittung → Pauschale 700
+        weg: o.weg || (hasAbo ? "oev" : la ? (la.gratis_transport ? "keine" : "pauschal") : "keine"),
         km: o.km || 0, tage: o.tage || 220, arbeitgeber: la && la.arbeitgeber ? String(la.arbeitgeber) : ""
       };
     }

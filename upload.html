@@ -557,7 +557,7 @@ function renderAdjust(){
   for(let i=0;i<TX.nPersons(S);i++){
     const p=S.persons[i], op=o.persons[i]=o.persons[i]||{};
     b.append(el("h3",{text:p.name}), el("div",{class:"grid2"},
-      sel(`a-w${i}`,"Arbeitsweg",[["oev","ÖV"],["velo","Velo"],["auto","Auto"],["motorrad","Motorrad"],["keine","Zu Fuss / keiner"],["offen","Noch offen"]],p.weg,v=>{op.weg=v; commit();}),
+      sel(`a-w${i}`,"Arbeitsweg",[["pauschal","Pauschale 700 (Standard)"],["oev","ÖV"],["velo","Velo"],["auto","Auto"],["motorrad","Motorrad"],["keine","Zu Fuss / keiner"],["offen","Noch offen"]],p.weg,v=>{op.weg=v; commit();}),
       num(`a-km${i}`,"km einfach",p.km,v=>{op.km=v; commit();}),
       num(`a-t${i}`,"Arbeitstage",p.tage,v=>{op.tage=v; commit();}),
       sel(`a-v${i}`,"Mittagessen",[["voll","Auswärts"],["verbilligt","Kantine"],["keine","Zu Hause"]],p.verpflegung,v=>{op.verpflegung=v; commit();}),

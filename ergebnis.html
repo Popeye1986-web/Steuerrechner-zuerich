@@ -324,7 +324,7 @@ function detailsFor(r){
   const rowsOf = zs => R.rows.filter(x=>zs.includes(x.z) && x.kind==="wert");
   switch(true){
     case /^11\.[12]$/.test(z): { const x=P[pIdx]; if(!x) break; const pe=S.persons[x.p];
-      const weg={oev:"ÖV-Abo",velo:"Velo (Pauschale 700)",auto:"Auto",motorrad:"Motorrad",keine:"kein Arbeitsweg",offen:"Arbeitsweg noch offen"}[pe.weg]||pe.weg;
+      const weg={oev:"ÖV-Abo",velo:"Velo (Pauschale 700)",pauschal:"Pauschale 700: Feld F nicht angekreuzt, keine ÖV-Quittung",auto:"Auto",motorrad:"Motorrad",keine:"kein Arbeitsweg",offen:"Arbeitsweg noch offen"}[pe.weg]||pe.weg;
       L.push(...srcLines(["oev_abo"],x.p));
       L.push({l:`Fahrkosten (${weg}${pe.weg==="auto"||pe.weg==="motorrad"?`, ${pe.km} km × 2 × ${pe.tage} Tage`:""}${pe.geschaeftsauto?", Geschäftsauto: kein Abzug":""})`,s:x.fahrS,b:x.fahrB});
       L.push(F(`Fahrkosten höchstens ${fmt(Z.fahrMax)} (Staat) bzw. ${fmt(B.fahrMax)} (Bund)`));
@@ -391,7 +391,7 @@ function renderPersonalien(){
   row("Konfession", [...Array(np).keys()].map(i=>S.konfessionen&&S.konfessionen[i] ? KN[S.konfessionen[i]]+(D.konfSrc?` (${D.konfSrc})`:"") : "offen"));
   row("Arbeitgeber", [...Array(np).keys()].map(i=>S.persons[i].arbeitgeber||null));
   row("Pensionskasse", [...Array(np).keys()].map(i=>S.persons[i].pk?"ja":"nein"));
-  row("Arbeitsweg", [...Array(np).keys()].map(i=>({oev:"ÖV",velo:"Velo",auto:"Auto",motorrad:"Motorrad",keine:"keiner",offen:"offen"})[S.persons[i].weg]||S.persons[i].weg));
+  row("Arbeitsweg", [...Array(np).keys()].map(i=>({oev:"ÖV",velo:"Velo",pauschal:"Pauschale 700",auto:"Auto",motorrad:"Motorrad",keine:"keiner",offen:"offen"})[S.persons[i].weg]||S.persons[i].weg));
   head("Haushalt");
   const one=(k,v)=>tb.append(el("tr",{}, el("td",{class:"k",text:k}), el("td",{colspan:String(np),text:v||"–"})));
   one("Zivilstand", (S.zivil==="verheiratet"?"verheiratet / eingetragene Partnerschaft":"alleinstehend")+(D.zivilSrc?` (${D.zivilSrc})`:""));
@@ -471,7 +471,7 @@ function helperTable(title, ref, cols, lines){
 function renderHelpers(){
   const box=$("helpers"); box.replaceChildren();
   // Berufsauslagen
-  const weg={oev:"ÖV",velo:"Velo",auto:"Auto",motorrad:"Motorrad",keine:"keiner",offen:"noch offen"};
+  const weg={oev:"ÖV",velo:"Velo",pauschal:"Pauschale 700",auto:"Auto",motorrad:"Motorrad",keine:"keiner",offen:"noch offen"};
   for(const x of R.P){
     const pe=S.persons[x.p];
     if(!x.lohn && !x.neben) continue;
