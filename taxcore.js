@@ -108,6 +108,8 @@ window.TX = (function () {
       need: S => S.sit.unterhalt },
     { id: "steuerrechnung", name: "Letzte Steuerrechnung oder Veranlagung", why: "Zivilstand, Gemeinde, Steuerfuss und Konfession.", keys: [],
       need: () => false, optional: true },
+    { id: "steuererklaerung", name: "Steuererklärung Vorjahr (Seite 1 Personalien)", why: "Personen, Kinder, Zivilstand, Gemeinde und Konfession.", keys: [],
+      need: () => false, optional: true },
     { id: "sonstiges", name: "Weiteres Vermögen und weitere Einkünfte", why: "Bargeld, Fahrzeuge, Lebensversicherungen, Nebenerwerb. Nur ausfüllen, wenn vorhanden.", keys: ["nebenerwerb", "uebrige_einkuenfte", "bargeld", "fahrzeuge", "lebensversicherung", "uebriges_vermoegen"],
       need: () => false, optional: true }
   ];
@@ -263,7 +265,7 @@ window.TX = (function () {
     const einfE = stufen(stE, fam ? Z.verh : Z.grund, 100);
     const einfV = stufen(verm, fam ? Z.vverh : Z.vgrund, 1000);
     const einf = einfE + einfV;
-    const kanton = einf * Z.kfuss / 100, gemeinde = einf * (+S.gfuss || 0) / 100, kirche = einf * (+S.kfuss || 0) / 100;
+    const kanton = einf * Z.kfuss / 100, gemeinde = einf * (+S.gfuss || 0) / 100, kirche = einf * (+S.kfuss || 0) / 100 * (S.kircheAnteil == null ? 1 : S.kircheAnteil);
     const personal = PERSONALSTEUER * (verh ? 2 : 1);
     let bund = bundTarif(stB, fam) - (fam ? BUND.eltern * kids : 0);
     bund = Math.max(0, bund); if (bund < 25) bund = 0;
@@ -403,6 +405,9 @@ window.TX = (function () {
   const ADULT_TYPES = ["lohnausweis", "saeule3a", "rente", "pk_einkauf", "taggeld", "selbst", "weiterbildung", "oev"];
   const typeName = id => (DOCTYPES.find(t => t.id === id) || { name: "Beleg" }).name;
 
+  const PRIOR = ["steuerrechnung", "steuererklaerung"];
+  const KIRCHE = ["reformiert", "katholisch", "christkatholisch"];
+  const KFUSS_SCHAETZUNG = 10; // typischer Kirchensteuerfuss im Kanton Zürich, bis der genaue Wert bekannt ist
   function rebuild(S) {
     const O = S.overrides = S.overrides || {};
     O.persons = O.persons || [{}, {}];
@@ -411,7 +416,7 @@ window.TX = (function () {
     // Steuerperiode: was die meisten Belege sagen, ausser die Person hat sie gewählt
     if (O.year && ZH[O.year]) S.year = O.year;
     else {
-      const ys = {}; for (const d of docs) { const j = +d.result.jahr; if (d.type !== "steuerrechnung" && ZH[j]) ys[j] = (ys[j] || 0) + 1; }
+      const ys = {}; for (const d of docs) { const j = +d.result.jahr; if (!PRIOR.includes(d.type) && ZH[j]) ys[j] = (ys[j] || 0) + 1; }
       const best = Object.keys(ys).sort((a, b) => ys[b] - ys[a])[0];
       if (best) S.year = +best;
     }
@@ -473,17 +478,26 @@ window.TX = (function () {
       return i >= 0 ? i : 0;
     }
 
-    // 4. Kinder
-    const kidList = kids.map(h => ({ key: h.key, name: [h.vorname, h.nachname].filter(Boolean).join(" ") || "Kind", age: ageAt(h.dob, y) }));
-    const kidsCount = kidList.filter(k => k.age == null || k.age < 18 || O.ausbildung[k.name]).length;
+    // 4. Kinder (Ausbildung aus Seite 1 der Steuererklärung, falls vorhanden)
+    const persDoc = docs.filter(d => d.type === "steuererklaerung" && d.result.personalien).sort((a, b) => (+b.result.jahr || 0) - (+a.result.jahr || 0))[0];
+    const PS = persDoc ? persDoc.result.personalien : null;
+    const ausbAuto = {};
+    const kidList = kids.map(h => {
+      const name = [h.vorname, h.nachname].filter(Boolean).join(" ") || "Kind";
+      const pk = PS && (PS.kinder || []).find(k => norm(k.vorname).split(" ")[0] === h.vn && (!k.geburtsdatum || !h.dob || k.geburtsdatum === h.dob));
+      if (pk && pk.ausbildung != null) ausbAuto[name] = pk.ausbildung;
+      return { key: h.key, name, age: ageAt(h.dob, y) };
+    });
+    const ausb = name => O.ausbildung[name] != null ? O.ausbildung[name] : ausbAuto[name];
+    const kidsCount = kidList.filter(k => k.age == null || k.age < 18 || ausb(k.name)).length;
     S.kinder = O.kinder != null ? O.kinder : kidsCount;
     S.kinderU14 = O.kinderU14 != null ? O.kinderU14 : Math.min(S.kinder, kidList.filter(k => k.age != null && k.age <= 14).length);
 
     // 5. Gemeinde, Steuerfuss, Kirche
-    const st = (docs.filter(d => d.type === "steuerrechnung").map(d => d.result.steuern).filter(Boolean))[0] || {};
+    const st = (docs.filter(d => PRIOR.includes(d.type)).sort((a, b) => (a.type === "steuerrechnung" ? 0 : 1) - (b.type === "steuerrechnung" ? 0 : 1)).map(d => d.result.steuern).filter(Boolean))[0] || {};
     const orte = {};
     for (const d of docs) { const o = d.result.adresse && d.result.adresse.ort; if (o) orte[o] = (orte[o] || 0) + 1; }
-    const ortAuto = st.gemeinde || Object.keys(orte).sort((a, b) => orte[b] - orte[a])[0] || "";
+    const ortAuto = st.gemeinde || (PS && PS.gemeinde) || Object.keys(orte).sort((a, b) => orte[b] - orte[a])[0] || "";
     S.gemeindeName = O.gemeindeName || ortAuto;
     const gMatch = GEMEINDEN.find(g => g.fuss && norm(g.name).split(" ")[0] === norm(S.gemeindeName).split(" ")[0]);
     let gfussSrc = null;
@@ -491,11 +505,23 @@ window.TX = (function () {
     else if (st.steuerfuss_gemeinde) { S.gfuss = +st.steuerfuss_gemeinde; gfussSrc = "Steuerrechnung"; }
     else if (gMatch) { S.gfuss = gMatch.fuss; gfussSrc = "Gemeinde " + gMatch.name; }
     else { S.gfuss = S.gfuss || 119; gfussSrc = null; }
-    let kfussSrc = null;
+    // Konfession: Ihre Angabe, sonst pro Person aus Seite 1 der Steuererklärung, sonst aus der Steuerrechnung
+    let konfs = null, konfSrc = null;
+    if (O.konfession) { konfs = Array(np).fill(O.konfession); konfSrc = "Ihre Angabe"; }
+    else if (PS && (PS.personen || []).slice(0, np).some(p => p && p.konfession)) {
+      konfs = [...Array(np).keys()].map(i => (PS.personen[i] && PS.personen[i].konfession) || (PS.personen[0] && PS.personen[0].konfession) || null);
+      konfSrc = "Steuererklärung " + (persDoc.result.jahr || "Vorjahr");
+    } else if (st.konfession) { konfs = Array(np).fill(st.konfession); konfSrc = "Steuerrechnung"; }
+    const members = konfs ? konfs.filter(k => KIRCHE.includes(k)).length : null;
+    S.konfession = konfs ? (members ? konfs.find(k => KIRCHE.includes(k)) : "keine") : null;
+    S.konfessionen = konfs;
+    // Gehört nur eine Person einer Landeskirche an, ist die halbe Kirchensteuer geschuldet
+    S.kircheAnteil = members == null ? 1 : members / np;
+    let kfussSrc = null; S.kfussSchaetzung = false;
     if (O.kfuss != null) { S.kfuss = O.kfuss; kfussSrc = "Ihre Angabe"; }
-    else if (st.steuerfuss_kirche != null && st.steuerfuss_kirche !== "") { S.kfuss = +st.steuerfuss_kirche || 0; kfussSrc = "Steuerrechnung"; }
-    else if (st.konfession === "keine") { S.kfuss = 0; kfussSrc = "Steuerrechnung"; }
-    else if (O.konfession === "keine") { S.kfuss = 0; kfussSrc = "Ihre Angabe"; }
+    else if (members === 0) { S.kfuss = 0; kfussSrc = konfSrc; }
+    else if (st.steuerfuss_kirche != null && st.steuerfuss_kirche !== "" && !(+st.steuerfuss_kirche === 0 && members)) { S.kfuss = +st.steuerfuss_kirche || 0; kfussSrc = "Steuerrechnung"; }
+    else if (members) { S.kfuss = KFUSS_SCHAETZUNG; S.kfussSchaetzung = true; }
     else { S.kfuss = 0; }
 
     // 6. Situation für die Belegliste
@@ -524,9 +550,9 @@ window.TX = (function () {
     const q = [];
     if (!O.zivil && !zivilAuto) q.push({ id: "zivil", text: `Sind ${adults[0] ? adults[0].vorname : "Sie"} und ${adults[1] ? adults[1].vorname : "die zweite Person"} verheiratet?`, why: "Unverheiratete Paare machen je eine eigene Steuererklärung." });
     if (!gfussSrc) q.push({ id: "gfuss", text: S.gemeindeName ? `Wie hoch ist der Steuerfuss von ${S.gemeindeName}?` : "In welcher Gemeinde wohnen Sie, und wie hoch ist der Steuerfuss?", why: "Steht auf Ihrer letzten Steuerrechnung oder unter zh.ch/steuerfuesse." });
-    if (!kfussSrc) q.push({ id: "kirche", text: O.konfession ? `Wie hoch ist der Kirchensteuerfuss (${O.konfession})?` : "Sind Sie Mitglied einer Landeskirche?", why: "Für die Kirchensteuer. Steht auf der letzten Steuerrechnung." });
+    if (!kfussSrc) q.push({ id: "kirche", konfBekannt: !!konfs, text: S.konfession ? `Wie hoch ist der Kirchensteuerfuss (${S.konfession})?` : "Sind Sie Mitglied einer Landeskirche?", why: S.kfussSchaetzung ? `Geschätzt mit ${KFUSS_SCHAETZUNG} %. Der genaue Wert steht auf der letzten Steuerrechnung.` : "Für die Kirchensteuer. Steht auf der letzten Steuerrechnung." });
     for (let i = 0; i < np; i++) if (S.persons[i].weg === "offen") q.push({ id: "weg" + i, person: i, text: `Wie kommt ${S.persons[i].name.split(" ")[0]} zur Arbeit?`, why: "Für den Fahrkostenabzug. Mit ÖV-Abo einfach die Quittung hochladen." });
-    for (const k of kidList) if (k.age != null && k.age >= 18 && k.age < 26 && O.ausbildung[k.name] == null) q.push({ id: "ausb:" + k.name, kid: k.name, text: `Ist ${k.name.split(" ")[0]} (${k.age}) noch in Ausbildung?`, why: "Dann gibt es den Kinderabzug weiterhin." });
+    for (const k of kidList) if (k.age != null && k.age >= 18 && k.age < 26 && ausb(k.name) == null) q.push({ id: "ausb:" + k.name, kid: k.name, text: `Ist ${k.name.split(" ")[0]} (${k.age}) noch in Ausbildung?`, why: "Dann gibt es den Kinderabzug weiterhin." });
 
     const miss = [];
     const want = (id, name, why) => { if (!S.na[id]) miss.push({ id, name, why }); };
@@ -535,12 +561,12 @@ window.TX = (function () {
     if (!has("krankenkasse")) want("krankenkasse", "Prämienbescheinigung Krankenkasse", "Für den Versicherungsabzug (Ziffer 15).");
     for (let i = 0; i < np; i++) if (has("lohnausweis", i) && !has("saeule3a", i)) want("3a" + i, "Säule 3a " + S.persons[i].name, "Falls einbezahlt. Bis CHF " + nf.format(S3A_PK) + " abzugsfähig (Ziffer 14).");
     if (S.kinderU14 > 0 && !has("kita")) want("kita", "Rechnungen Kita, Hort, Tagesfamilie", "Falls Kinder fremdbetreut werden (Ziffer 16.6).");
-    if (!has("steuerrechnung") && (!gfussSrc || !kfussSrc || (!zivilAuto && !O.zivil))) want("steuerrechnung", "Letzte Steuerrechnung oder Veranlagung", "Daraus lesen wir Zivilstand, Gemeinde und Steuerfüsse.");
+    if (!has("steuerrechnung") && !has("steuererklaerung") && (!gfussSrc || !kfussSrc || (!zivilAuto && !O.zivil))) want("steuerrechnung", "Letzte Steuerrechnung oder Veranlagung", "Daraus lesen wir Zivilstand, Gemeinde und Steuerfüsse.");
 
     S.derived = {
       adults: adults.slice(0, 2).map((h, i) => ({ idx: i, name: S.persons[i].name, dob: h.dob, age: ageAt(h.dob, y), sources: [...h.sources] })),
       others: adults.slice(2).map(h => [h.vorname, h.nachname].filter(Boolean).join(" ")),
-      kids: kidList, zivilAuto, zivilSrc: zivSrc ? zivSrc.name : null, gfussSrc, kfussSrc,
+      kids: kidList, zivilAuto, zivilSrc: zivSrc ? zivSrc.name : null, gfussSrc, kfussSrc, konfSrc, unterstuetzte: PS ? PS.unterstuetzte_personen || 0 : 0,
       questions: q, missing: miss, separate: !verh && adults.length >= 2 ? S.persons[1].name : null
     };
     return S;

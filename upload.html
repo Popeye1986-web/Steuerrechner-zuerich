@@ -423,7 +423,7 @@ async function readDoc(id){
     if(!res.ok) throw new Error("http");
     const out=await res.json();
     d.result=out; d.type=out.dokumenttyp||d.type; d.status="fertig"; d.count=(out.positionen||[]).length;
-    d.hint=(out.jahr && out.jahr!==S.year && d.type!=="steuerrechnung" ? `Beleg ist für ${out.jahr}. ` : "") + ((out.hinweise||[])[0]||"");
+    d.hint=(out.jahr && out.jahr!==S.year && !["steuerrechnung","steuererklaerung"].includes(d.type) ? `Beleg ist für ${out.jahr}. ` : "") + ((out.hinweise||[])[0]||"");
     toast(`${d.name}: ${TX.typeName(d.type)} erkannt`);
   }catch(e){
     d.status="fehler";
@@ -500,7 +500,8 @@ function renderDocs(){
         g.append(el("div",{class:"field"}, el("label",{for:id}, el("span",{text:KEYS[k].l}), el("span",{class:unsure?"pill warn":"z",text:unsure?"prüfen":(KEYS[k].z==="WV"?"":KEYS[k].z)})), inp));
       }
       inner.append(g);
-    } else if(d.type==="steuerrechnung"){ inner.append(el("p",{class:"note",text:"Aus diesem Beleg werden nur Zivilstand, Gemeinde und Steuerfüsse übernommen."})); }
+    } else if(d.type==="steuerrechnung"){ inner.append(el("p",{class:"note",text:"Aus diesem Beleg werden nur Zivilstand, Gemeinde, Konfession und Steuerfüsse übernommen."})); }
+    else if(d.type==="steuererklaerung"){ inner.append(el("p",{class:"note",text:"Aus diesem Beleg wird Seite 1 übernommen: Personen, Kinder, Zivilstand, Gemeinde und Konfession. Beträge des Vorjahres werden nicht übernommen."})); }
     det.append(inner); card.append(det);
     box.append(card);
   }
@@ -519,10 +520,11 @@ function renderFacts(){
   f.append(fact("Kinder", S.kinder ? `${S.kinder}${kids.length?": "+kids.map(k=>first(k.name)+(k.age!=null?` (${k.age})`:"")).join(", "):""}` : "Keine", S.kinderU14?`davon ${S.kinderU14} bis 14 Jahre`:""));
   if(PRUEFER){
     f.append(fact("Gemeinde", (S.gemeindeName||"Noch unklar")+` · Steuerfuss ${S.gfuss} %`, D.gfussSrc?(D.gfussSrc==="Ihre Angabe"?D.gfussSrc:"aus "+D.gfussSrc):"bitte bestätigen", !D.gfussSrc));
-    f.append(fact("Kirche", (O().konfession&&O().konfession!=="keine"?O().konfession+" · ":"")+(S.kfuss?`Kirchensteuerfuss ${S.kfuss} %`:(D.kfussSrc?"Keine Kirchensteuer":"Steuerfuss offen")), D.kfussSrc?(D.kfussSrc==="Ihre Angabe"?D.kfussSrc:"aus "+D.kfussSrc):"bitte bestätigen", !D.kfussSrc));
+    const ksP=S.konfessionen?[...new Set(S.konfessionen.map(k=>({keine:"Keine Mitgliedschaft",reformiert:"Reformiert",katholisch:"Römisch-katholisch",christkatholisch:"Christkatholisch"})[k]||"Offen"))].join(" / ")+" · ":"";
+    f.append(fact("Kirche", ksP+(S.kfuss?`Kirchensteuerfuss ${S.kfuss} %${S.kfussSchaetzung?" (geschätzt)":""}${S.kircheAnteil===0.5?", halbe Kirchensteuer":""}`:(D.kfussSrc?"Keine Kirchensteuer":"Steuerfuss offen")), D.kfussSrc?(D.kfussSrc==="Ihre Angabe"?D.kfussSrc:"aus "+D.kfussSrc):(D.konfSrc?"Konfession aus "+D.konfSrc+", Steuerfuss bitte bestätigen":"bitte bestätigen"), !D.kfussSrc));
   } else {
     f.append(fact("Gemeinde", S.gemeindeName||"Noch nicht erkannt", "", !S.gemeindeName));
-    const k=O().konfession; f.append(fact("Kirche", k ? ({keine:"Keine Mitgliedschaft",reformiert:"Reformiert",katholisch:"Römisch-katholisch",christkatholisch:"Christkatholisch"})[k] : (D.kfussSrc?(S.kfuss?"Mitglied":"Keine Mitgliedschaft"):"Noch offen"), "", false));
+    const ks=S.konfessionen; f.append(fact("Kirche", ks ? [...new Set(ks.map(k=>({keine:"Keine Mitgliedschaft",reformiert:"Reformiert",katholisch:"Römisch-katholisch",christkatholisch:"Christkatholisch"})[k]||"Offen"))].join(" / ") : (D.kfussSrc?(S.kfuss?"Mitglied":"Keine Mitgliedschaft"):"Noch offen"), D.konfSrc?(D.konfSrc==="Ihre Angabe"?D.konfSrc:"aus "+D.konfSrc):"", false));
   }
   if(D.separate) f.append(el("p",{class:"notice warn",text:`${D.separate} ist nicht mit Ihnen verheiratet. Diese Belege gehören in eine eigene Steuererklärung und werden hier nicht gerechnet.`}));
   if(D.others && D.others.length) f.append(el("p",{class:"note",text:"Weitere Personen auf den Belegen: "+D.others.join(", ")}));
@@ -562,7 +564,7 @@ function custQuestions(){
   const o=O(), out=[];
   for(const q of (S.derived&&S.derived.questions)||[]){
     if(q.id==="gfuss"){ if(!S.gemeindeName && !o.gemeindeName) out.push({id:"gemeinde",text:"In welcher Gemeinde wohnen Sie?",why:"Für die Gemeindesteuer."}); }
-    else if(q.id==="kirche"){ if(!o.konfession) out.push({id:"konf",text:"Sind Sie Mitglied einer Landeskirche?",why:"Für die Kirchensteuer."}); }
+    else if(q.id==="kirche"){ if(!q.konfBekannt) out.push({id:"konf",text:"Sind Sie Mitglied einer Landeskirche?",why:"Für die Kirchensteuer."}); }
     else out.push(q);
   }
   return out;
@@ -619,7 +621,7 @@ const NEEDS_REQ=[
   { types:["krankenkasse"], name:"Prämienbescheinigung Krankenkasse", why:"Für alle Personen im Haushalt, Grund- und Zusatzversicherung." }
 ];
 const NEEDS_OPT=[
-  { types:["steuerrechnung"], name:"Letzte Steuerrechnung oder Veranlagung", why:"Daraus lesen wir Gemeinde, Zivilstand und Steuerfüsse. Spart Ihnen Fragen." },
+  { types:["steuererklaerung","steuerrechnung"], name:"Letzte Steuererklärung oder Steuerrechnung", why:"Daraus lesen wir Personen, Kinder, Zivilstand, Gemeinde und Konfession. Spart Ihnen Fragen." },
   { types:["saeule3a"], name:"Bescheinigung Säule 3a", why:"Einzahlungen sind abzugsfähig." },
   { types:["oev"], name:"Quittung ÖV-Abo", why:"Für den Fahrkostenabzug." },
   { types:["kita"], name:"Rechnungen Kita, Hort, Tagesfamilie", why:"Für Kinder unter 14 Jahren." },

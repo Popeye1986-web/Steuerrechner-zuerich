@@ -57,7 +57,8 @@ const TYPES = {
   weiterbildung: "Rechnung Weiterbildung",
   krankheit: "Arzt-, Zahnarzt- oder Spitalrechnung, Leistungsabrechnung",
   unterhalt: "Beleg Unterhaltsbeiträge",
-  steuerrechnung: "Steuerrechnung, Veranlagung oder Steuererklärung eines Vorjahres",
+  steuerrechnung: "Steuerrechnung, Veranlagung oder Einschätzungsentscheid",
+  steuererklaerung: "Steuererklärung (Formular des Kantonalen Steueramts, z.B. vom Vorjahr) mit Seite 1 «Personalien»",
   sonstiges: "Anderer Beleg"
 };
 const MEDIA = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
@@ -114,16 +115,26 @@ ${typeList}
 ${keyList}
 
 4. Nur beim Lohnausweis: "lohnausweis" mit arbeitgeber, kantine (Feld G angekreuzt), gratis_transport (Feld F angekreuzt), geschaeftsauto (Ziffer 2.2 Privatanteil Geschäftsfahrzeug > 0), pk_beitraege (Ziffer 10.1).
-Nur bei Steuerrechnung, Veranlagung oder Vorjahres-Steuererklärung: "steuern" mit gemeinde, steuerfuss_gemeinde (Prozent), steuerfuss_kirche (Prozent oder 0), konfession ("reformiert", "katholisch", "christkatholisch", "keine"), und zivilstand.
+Nur bei Steuerrechnung, Veranlagung oder Steuererklärung: "steuern" mit gemeinde, steuerfuss_gemeinde (Prozent), steuerfuss_kirche (Prozent oder 0), konfession ("reformiert", "katholisch", "christkatholisch", "keine"), und zivilstand.
+
+5. Bei einer Steuererklärung (dokumenttyp "steuererklaerung"): Lies die Seite 1 «Personalien, Berufs- und Familienverhältnisse» VOLLSTÄNDIG aus und gib sie als "personalien" zurück:
+- "gemeinde": politische Gemeinde bzw. Wohnort laut Formular.
+- "zivilstand": angekreuzter Zivilstand.
+- "personen": Person 1 (Steuerpflichtige/r bzw. Ehemann/Person 1) und Person 2 (Ehefrau/Person 2), in dieser Reihenfolge, je mit vorname, nachname, geburtsdatum, konfession, beruf, arbeitgeber.
+  konfession genau so: "reformiert" (evangelisch-reformiert), "katholisch" (römisch-katholisch), "christkatholisch", "keine" (andere, keine, konfessionslos). Null nur, wenn nichts angekreuzt oder eingetragen ist.
+- "kinder": alle Kinder (im eigenen Haushalt und ausserhalb) mit vorname, nachname, geburtsdatum, im_haushalt (true/false), ausbildung (true, wenn Schule, Lehre, Studium oder Ausbildung eingetragen ist; false, wenn ausdrücklich keine; sonst null).
+- "unterstuetzte_personen": Anzahl unterstützter Personen (0, wenn keine).
+Trage dieselben Personen auch in "personen" ein (Person 1 "steuerpflichtig", Person 2 "ehepartner", Kinder "kind").
+Steht auf einem anderen Beleg (z.B. Steuerrechnung) die Konfession, gib sie in "steuern.konfession" an.
 
 Regeln:
 - Beträge nur aus dem Jahr ${year} bzw. per 31.12.${year}. Andere Jahre trotzdem auslesen und in "hinweise" nennen.
-- Bei einer Steuerrechnung des Vorjahres KEINE Beträge in "positionen" übernehmen, nur "steuern" und Personen.
+- Bei einer Steuerrechnung oder Steuererklärung eines Vorjahres KEINE Beträge in "positionen" übernehmen, nur "steuern", "personalien" und Personen.
 - Mehrere Konten zum gleichen Schlüssel zusammenzählen. Nichts erfinden. Unsichere Werte mit "sicherheit": "tief".
 - Keine AHV-Nummern, IBAN oder Kontonummern ausgeben.
 
 Antworte nur mit JSON:
-{"dokumenttyp":"lohnausweis","jahr":${year},"inhaber":{"vorname":"","nachname":"","geburtsdatum":null},"personen":[{"vorname":"","nachname":"","geburtsdatum":null,"rolle":"steuerpflichtig"}],"adresse":{"plz":"","ort":""},"zivilstand":null,"lohnausweis":null,"steuern":null,"positionen":[{"key":"nettolohn","betrag":0,"sicherheit":"hoch"}],"hinweise":[]}`;
+{"dokumenttyp":"lohnausweis","jahr":${year},"inhaber":{"vorname":"","nachname":"","geburtsdatum":null},"personen":[{"vorname":"","nachname":"","geburtsdatum":null,"rolle":"steuerpflichtig"}],"adresse":{"plz":"","ort":""},"zivilstand":null,"lohnausweis":null,"steuern":null,"personalien":null,"positionen":[{"key":"nettolohn","betrag":0,"sicherheit":"hoch"}],"hinweise":[]}`;
 
   const fileBlock = mediaType === "application/pdf"
     ? { type: "document", source: { type: "base64", media_type: mediaType, data } }
@@ -133,7 +144,7 @@ Antworte nur mit JSON:
     const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({ model: process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5", max_tokens: 2500,
+      body: JSON.stringify({ model: process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5", max_tokens: 3500,
         messages: [{ role: "user", content: [fileBlock, { type: "text", text: prompt }] }] })
     });
     if (!r.ok) { const t = await r.text(); console.error("Anthropic", r.status, t.slice(0, 500)); return res.status(502).json({ error: "upstream", status: r.status }); }
@@ -156,13 +167,38 @@ Antworte nur mit JSON:
       gemeinde: str(json.steuern.gemeinde, 60), steuerfuss_gemeinde: Number(json.steuern.steuerfuss_gemeinde) || null,
       steuerfuss_kirche: json.steuern.steuerfuss_kirche == null ? null : (Number(json.steuern.steuerfuss_kirche) || 0),
       konfession: ["reformiert", "katholisch", "christkatholisch", "keine"].includes(json.steuern.konfession) ? json.steuern.konfession : null } : null;
+    const KONF = v => { const t = String(v || "").toLowerCase(); if (!t) return null;
+      if (/christ/.test(t)) return "christkatholisch"; if (/kath/.test(t)) return "katholisch"; if (/ref|evang|protest/.test(t)) return "reformiert";
+      if (/kein|ander|konfessionslos|ohne|none/.test(t)) return "keine"; return null; };
+    const prior = typ === "steuerrechnung" || typ === "steuererklaerung";
+    const pj = json.personalien && typeof json.personalien === "object" ? json.personalien : null;
+    const pers = pj ? {
+      gemeinde: str(pj.gemeinde, 60),
+      zivilstand: ziv(pj.zivilstand),
+      personen: (Array.isArray(pj.personen) ? pj.personen : []).slice(0, 2).map(p => p && (p.vorname || p.nachname) ? {
+        vorname: str(p.vorname, 40), nachname: str(p.nachname, 40), geburtsdatum: dob(p.geburtsdatum),
+        konfession: KONF(p.konfession), beruf: str(p.beruf, 60), arbeitgeber: str(p.arbeitgeber, 80) } : null),
+      kinder: (Array.isArray(pj.kinder) ? pj.kinder : []).filter(k => k && (k.vorname || k.nachname)).slice(0, 10).map(k => ({
+        vorname: str(k.vorname, 40), nachname: str(k.nachname, 40), geburtsdatum: dob(k.geburtsdatum),
+        im_haushalt: k.im_haushalt === false ? false : true, ausbildung: k.ausbildung === true ? true : k.ausbildung === false ? false : null })),
+      unterstuetzte_personen: Math.max(0, Math.min(9, parseInt(pj.unterstuetzte_personen, 10) || 0))
+    } : null;
+    if (stx && !stx.konfession && json.steuern) stx.konfession = KONF(json.steuern.konfession);
+    // Personen aus Seite 1 auch in die Personenliste übernehmen
+    let personen = (Array.isArray(json.personen) ? json.personen : []).map(person).filter(Boolean);
+    if (pers) {
+      pers.personen.forEach((p, i) => { if (p) personen.push(person(Object.assign({}, p, { rolle: i === 0 ? "steuerpflichtig" : "ehepartner" }))); });
+      pers.kinder.forEach(k => personen.push(person(Object.assign({}, k, { rolle: "kind" }))));
+      personen = personen.filter(Boolean);
+    }
     return res.status(200).json({
       dokumenttyp: typ, jahr: Number(json.jahr) || null,
-      inhaber: person(json.inhaber), personen: (Array.isArray(json.personen) ? json.personen : []).map(person).filter(Boolean).slice(0, 12),
+      inhaber: person(json.inhaber), personen: personen.slice(0, 16),
       adresse: json.adresse ? { plz: str(json.adresse.plz, 6), ort: str(json.adresse.ort, 60) } : null,
-      zivilstand: ziv(json.zivilstand) || (stx ? ziv(json.steuern.zivilstand) : null),
-      lohnausweis: typ === "lohnausweis" ? la : null, steuern: typ === "steuerrechnung" ? stx : null,
-      positionen: typ === "steuerrechnung" ? [] : positionen,
+      zivilstand: ziv(json.zivilstand) || (pers && pers.zivilstand) || (stx ? ziv(json.steuern.zivilstand) : null),
+      lohnausweis: typ === "lohnausweis" ? la : null, steuern: prior ? stx : null,
+      personalien: typ === "steuererklaerung" ? pers : null,
+      positionen: prior ? [] : positionen,
       hinweise: (Array.isArray(json.hinweise) ? json.hinweise : []).map(v => str(v, 160)).slice(0, 3)
     });
   } catch (e) {
