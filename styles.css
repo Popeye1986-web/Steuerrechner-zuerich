@@ -101,3 +101,14 @@ footer.foot .page{padding-block:22px;font-size:14px;color:var(--muted);display:f
   .z,.zchip{color:#000;background:none}
   a{color:#000}
 }
+
+/* Modernisierung: weichere Ecken, feinere Schatten, Glas-Kopfzeile */
+:root{--r:16px;--shadow:0 1px 2px rgba(14,26,43,.04),0 12px 32px rgba(14,26,43,.06)}
+.btn{border-radius:11px}
+.btn.small{border-radius:9px}
+.btn.primary{background:linear-gradient(180deg,#1a4d83,#14406e);box-shadow:0 1px 0 rgba(255,255,255,.15) inset,0 6px 16px rgba(20,64,110,.25)}
+.btn.primary:hover{background:linear-gradient(180deg,#14406e,#0e3157)}
+.top{background:rgba(255,255,255,.78);backdrop-filter:saturate(1.6) blur(14px)}
+input[type=number],input[type=text],input[type=email],input[type=password],select{border-radius:10px}
+.pill{border-radius:99px}
+.notice{border-radius:14px}

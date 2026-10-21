@@ -134,6 +134,73 @@ body.locked .drop,body.locked .needs{display:none}
 body.fresh .layout{display:none}
 details.adjust summary{cursor:pointer;font-weight:600;font-size:15px;min-height:36px;display:flex;align-items:center}
 details.adjust .box{display:flex;flex-direction:column;gap:12px;padding-top:8px}
+
+/* ===== Modernisierung ===== */
+.hero{position:relative;isolation:isolate;background:#071629}
+.hero .page{position:relative;z-index:1;padding-block:88px 104px}
+.aurora{position:absolute;inset:0;overflow:hidden;z-index:0}
+.aurora span{position:absolute;border-radius:50%;filter:blur(80px);opacity:.55}
+.aurora span:nth-child(1){width:620px;height:620px;left:-160px;top:-220px;background:#1d4f8a}
+.aurora span:nth-child(2){width:520px;height:520px;right:-120px;top:20%;background:#2a6fb8;opacity:.35}
+.aurora span:nth-child(3){width:460px;height:460px;left:35%;bottom:-260px;background:#0f3a66}
+.hgrid{position:absolute;inset:0;z-index:0;background-image:linear-gradient(rgba(159,194,234,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(159,194,234,.07) 1px,transparent 1px);background-size:48px 48px;mask-image:radial-gradient(ellipse at 60% 40%,#000 25%,transparent 75%)}
+.hchip{display:inline-flex;align-items:center;gap:10px;padding:7px 14px 7px 12px;border-radius:999px;border:1px solid rgba(159,194,234,.28);background:rgba(255,255,255,.06);backdrop-filter:blur(8px);color:#cfe0f5;font-size:13.5px;font-weight:600;letter-spacing:.01em}
+.hchip .dot{width:8px;height:8px;border-radius:50%;background:#4ade80;box-shadow:0 0 0 0 rgba(74,222,128,.6)}
+.hero h1{font-size:clamp(38px,5.6vw,66px);line-height:1.02;letter-spacing:-.04em;margin-top:22px;font-weight:700}
+.grad{background:linear-gradient(95deg,#9fc2ea 0%,#ffffff 45%,#9fc2ea 100%);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero .lead{font-size:clamp(17px,1.4vw,19px)}
+.hero-trust{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px 22px;font-size:15px}
+@media (max-width:560px){.hero-trust{grid-template-columns:minmax(0,1fr)}}
+.hero-cta .btn{border-radius:12px}
+.hero-cta .btn.primary{box-shadow:0 10px 30px rgba(159,194,234,.25)}
+.btn.ghostlight{min-height:54px;padding:0 22px;background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.22);color:#fff;font-size:16px;backdrop-filter:blur(6px)}
+.btn.ghostlight:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.4);color:#fff}
+.paywith{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:26px;font-size:13px;color:#8fa3bb}
+.paywith span{margin-right:4px}
+.paywith b{font-weight:700;color:#dbe4ef;padding:4px 9px;border-radius:7px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);letter-spacing:.01em}
+.sheet-wrap{position:relative;justify-self:end;width:100%;max-width:462px}
+.sheet-wrap .sheet{max-width:none}
+.fbadge{position:absolute;z-index:4;display:inline-flex;align-items:center;gap:9px;padding:9px 14px 9px 9px;border-radius:12px;background:rgba(255,255,255,.92);color:#0e1a2b;font-size:13.5px;font-weight:600;box-shadow:0 18px 40px rgba(0,0,0,.35);backdrop-filter:blur(10px);white-space:nowrap}
+.fbadge i{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;background:#147a4a;color:#fff}
+.fbadge i.mail{background:#14406e}
+.fbadge.b1{left:-28px;top:-20px}
+.fbadge.b2{right:-8px;bottom:-26px}
+@media (max-width:900px){.sheet-wrap{justify-self:start;max-width:420px;margin-top:20px}.fbadge.b1{left:-4px;top:-22px}.fbadge.b2{right:6px}}
+@media (prefers-reduced-motion:no-preference){
+  .aurora span{animation:drift 18s ease-in-out infinite alternate}
+  .aurora span:nth-child(2){animation-duration:22s;animation-delay:-6s}
+  .aurora span:nth-child(3){animation-duration:26s;animation-delay:-12s}
+  @keyframes drift{to{transform:translate(80px,60px) scale(1.15)}}
+  .grad{animation:gshift 7s linear infinite}
+  @keyframes gshift{to{background-position:-200% 0}}
+  .hchip .dot{animation:ping 2s infinite}
+  @keyframes ping{70%{box-shadow:0 0 0 9px rgba(74,222,128,0)}100%{box-shadow:0 0 0 0 rgba(74,222,128,0)}}
+  .fbadge{animation:bob 5s ease-in-out infinite}
+  .fbadge.b2{animation-delay:-2.5s}
+  @keyframes bob{50%{transform:translateY(-8px)}}
+  .htxt>*{animation:rise .8s cubic-bezier(.2,.7,.2,1) both}
+  .htxt>*:nth-child(2){animation-delay:.08s}.htxt>*:nth-child(3){animation-delay:.16s}.htxt>*:nth-child(4){animation-delay:.24s}.htxt>*:nth-child(5){animation-delay:.32s}.htxt>*:nth-child(6){animation-delay:.4s}
+  .sheet-wrap{animation:rise 1s cubic-bezier(.2,.7,.2,1) both .2s}
+  @keyframes rise{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+}
+
+/* So funktioniert es */
+.howto{gap:16px;margin-top:-44px;position:relative;z-index:2}
+.howto>div{flex-direction:column;gap:6px;padding:24px;border-radius:18px;background:var(--sheet);border:1px solid var(--line);box-shadow:0 2px 4px rgba(14,26,43,.04),0 18px 40px rgba(14,26,43,.08);position:relative;overflow:hidden}
+.howto .n{position:absolute;right:18px;top:12px;width:auto;height:auto;background:none;font-size:44px;font-weight:700;letter-spacing:-.04em;color:#e8eef5;border-radius:0}
+.howto .hi{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(135deg,#14406e,#2a6fb8);color:#fff;margin-bottom:8px;box-shadow:0 8px 18px rgba(20,64,110,.3)}
+.howto b{font-size:17px}
+@media (max-width:760px){.howto{grid-template-columns:minmax(0,1fr);margin-top:-36px}}
+
+/* Upload-Feld mit leuchtendem Rand */
+@property --ang{syntax:"<angle>";inherits:false;initial-value:0deg}
+.drop{border:2px solid transparent;border-radius:20px;padding:48px 20px;background:linear-gradient(var(--sheet),var(--sheet)) padding-box,conic-gradient(from var(--ang),#d9e0e8 0deg,#2a6fb8 60deg,#9fc2ea 120deg,#d9e0e8 180deg,#d9e0e8 360deg) border-box;box-shadow:0 18px 40px rgba(14,26,43,.06)}
+.drop:hover,.drop.over{background:linear-gradient(#f4f8fd,#f4f8fd) padding-box,conic-gradient(from var(--ang),#14406e,#2a6fb8,#9fc2ea,#14406e) border-box}
+.drop .dico{width:64px;height:64px;border-radius:18px;display:grid;place-items:center;background:var(--red-soft);color:var(--red);margin-bottom:6px;transition:transform .2s}
+.drop:hover .dico,.drop.over .dico{transform:translateY(-4px)}
+.drop .fake{border-radius:12px;min-height:48px;padding:0 22px}
+@media (prefers-reduced-motion:no-preference){.drop{animation:spinb 6s linear infinite}@keyframes spinb{to{--ang:360deg}}}
+.needs .card{border-radius:18px}
 </style>
 </head>
 <body class="pending">
@@ -151,10 +218,12 @@ details.adjust .box{display:flex;flex-direction:column;gap:12px;padding-top:8px}
 </header>
 
 <section class="hero" id="hero" hidden aria-labelledby="heroTitle">
+  <div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>
+  <div class="hgrid" aria-hidden="true"></div>
   <div class="page">
-    <div>
-      <span class="label" style="color:#9fc2ea">Steuererklärung Kanton Zürich</span>
-      <h1 id="heroTitle" style="margin-top:14px">Belege hochladen, bezahlen, fertig.</h1>
+    <div class="htxt">
+      <span class="hchip"><span class="dot"></span>Steuererklärung Kanton Zürich 2025</span>
+      <h1 id="heroTitle">Belege hochladen, bezahlen, <span class="grad">fertig.</span></h1>
       <p class="lead">taxflix liest Ihre Belege automatisch und füllt Ihre Steuererklärung mit allen Ziffern und Codes aus. Eine Fachperson prüft alles und reicht sie elektronisch für Sie beim Steueramt ein.</p>
       <ul class="hero-trust">
         <li>Kein Konto nötig, Ihre Belege sieht nur Ihre Fachperson</li>
@@ -163,10 +232,15 @@ details.adjust .box{display:flex;flex-direction:column;gap:12px;padding-top:8px}
         <li>Bezahlung erst am Schluss, sicher über Stripe, auch mit TWINT</li>
       </ul>
       <div class="hero-cta">
-        <a class="btn primary" href="#upload">Jetzt Belege hochladen ↓</a>
-        <span class="muted">Dauert nur wenige Minuten</span>
+        <a class="btn primary" href="#upload">Jetzt Belege hochladen
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></a>
+        <a class="btn ghostlight" href="#howto">So funktioniert es</a>
       </div>
+      <div class="paywith"><span>Sicher bezahlen mit</span><b>TWINT</b><b>Visa</b><b>Mastercard</b><b>Apple Pay</b><b>Google Pay</b></div>
     </div>
+    <div class="sheet-wrap">
+    <span class="fbadge b1" aria-hidden="true"><i><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg></i>Lohnausweis erkannt</span>
+    <span class="fbadge b2" aria-hidden="true"><i class="mail"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></i>PDF per E-Mail</span>
     <figure class="sheet" aria-label="Auszug aus einer Steuererklärung des Kantons Zürich">
       <div class="sh-head">
         <div><span class="sh-title">Steuererklärung 2025</span><span class="sh-sub">Kanton Zürich · Natürliche Personen</span></div>
@@ -183,16 +257,17 @@ details.adjust .box{display:flex;flex-direction:column;gap:12px;padding-top:8px}
       <span class="sh-seal" aria-hidden="true"><span>Geprüft</span></span>
       <span class="scanline" aria-hidden="true"></span>
     </figure>
+    </div>
   </div>
 </section>
 
 <main class="page">
   <div class="card casebar" id="caseBar" hidden></div>
   <div class="notice" id="lockNote" hidden style="margin-top:24px"></div>
-  <div class="howto" id="howto" hidden>
-    <div><span class="n">1</span><span><b>Belege hochladen</b>Alle auf einmal, als PDF oder Foto.</span></div>
-    <div><span class="n">2</span><span><b>Offene Fragen</b>Nur, was auf keinem Beleg steht.</span></div>
-    <div><span class="n">3</span><span><b>Bezahlen</b>Formular kommt per E-Mail.</span></div>
+  <div class="howto" id="howto" hidden style="scroll-margin-top:90px">
+    <div><span class="n">01</span><span class="hi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></span><b>Belege hochladen</b><span>Alle auf einmal, als PDF oder Foto. Wir lesen sie automatisch.</span></div>
+    <div><span class="n">02</span><span class="hi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17h.01"/></svg></span><b>Offene Fragen</b><span>Nur, was auf keinem Beleg steht. Meist sind es keine.</span></div>
+    <div><span class="n">03</span><span class="hi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg></span><b>Bezahlen und fertig</b><span>Das ausgefüllte Formular kommt per E-Mail, wir reichen elektronisch ein.</span></div>
   </div>
   <div class="intro" id="upload" style="scroll-margin-top:80px">
     <span class="label" id="introLabel">Steuererklärung Kanton Zürich</span>
@@ -202,6 +277,7 @@ details.adjust .box{display:flex;flex-direction:column;gap:12px;padding-top:8px}
   </div>
 
   <label class="drop" id="drop" for="file">
+    <span class="dico" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></span>
     <strong>Belege hierher ziehen</strong>
     <span class="sub">oder antippen, um Dateien auszuwählen · PDF, JPG, PNG · beliebig viele auf einmal</span>
     <span class="btn primary fake">Dateien auswählen</span>
