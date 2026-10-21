@@ -200,6 +200,14 @@ details.adjust .box{display:flex;flex-direction:column;gap:12px;padding-top:8px}
 .drop .fake{border-radius:12px;min-height:48px;padding:0 22px}
 @media (prefers-reduced-motion:no-preference){.drop{animation:spinb 6s linear infinite}@keyframes spinb{to{--ang:360deg}}}
 .needs .card{border-radius:18px}
+.continue{display:flex;align-items:center;gap:22px;padding:28px;margin-top:8px;border-radius:20px;flex-wrap:wrap;border-color:#bcd2ea;background:linear-gradient(135deg,#ffffff,#eef4fb)}
+.continue .cico{flex:none;width:64px;height:64px;border-radius:18px;display:grid;place-items:center;background:linear-gradient(135deg,#14406e,#2a6fb8);color:#fff;font-size:26px;font-weight:700;box-shadow:0 8px 18px rgba(20,64,110,.3)}
+.continue .ctxt{flex:1 1 260px;display:flex;flex-direction:column;gap:4px}
+.continue h2{font-size:22px}
+.continue.paid{border-color:#bfe0cc;background:linear-gradient(135deg,#fff,#eef8f2);margin-bottom:20px}
+body.hascase .drop,body.hascase .needs,body.hascase #yearPick{display:none}
+.homelink{font-size:14px;color:var(--muted);text-decoration:none;font-weight:500}
+.homelink:hover{color:var(--ink)}
 </style>
 </head>
 <body class="pending">
@@ -211,6 +219,7 @@ details.adjust .box{display:flex;flex-direction:column;gap:12px;padding-top:8px}
       <span class="save" id="save" role="status"></span>
       <span id="who"></span>
       <button class="btn small" id="logout" type="button" hidden>Abmelden</button>
+      <a class="homelink" id="homeLink" href="upload.html" hidden>← Startseite</a>
       <a class="login-link" id="loginLink" href="login.html" hidden>Login für Fachpersonen</a>
     </div>
   </div>
@@ -274,6 +283,7 @@ details.adjust .box{display:flex;flex-direction:column;gap:12px;padding-top:8px}
     <div class="yearpick" id="yearPick" hidden><label for="yearSel">Steuerjahr</label><select id="yearSel"><option value="2025">2025</option><option value="2026">2026</option></select></div>
   </div>
 
+  <div class="card continue" id="continueBox" hidden></div>
   <label class="drop" id="drop" for="file">
     <span class="dico" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg></span>
     <strong>Belege hierher ziehen</strong>
@@ -692,9 +702,35 @@ function render(){
   if(act){ const e=document.getElementById(act); if(e){ const d=e.closest("details"); if(d) d.open=true; e.focus({preventScroll:true}); } }
 }
 
+// Startseite mit angefangener Steuererklärung: Hinweis zum Fortsetzen statt neuem Upload
+let CONTINUE=null;
+function showContinue(row){
+  CONTINUE=row;
+  const n=((row.data&&row.data.docs)||[]).length, href="upload.html?fall="+row.id;
+  document.body.classList.add("hascase");
+  const box=$("continueBox"); box.hidden=false; box.replaceChildren(
+    el("span",{class:"cico","aria-hidden":"true"}, el("span",{text:String(n)})),
+    el("div",{class:"ctxt"}, el("span",{class:"label",text:"Ihre angefangene Steuererklärung "+row.jahr}),
+      el("h2",{text:n?`${n} Beleg${n>1?"e":""} hochgeladen`:"Noch keine Belege hochgeladen"}),
+      el("p",{class:"muted",text:"Laden Sie weitere Belege hoch, beantworten Sie offene Fragen oder gehen Sie zur Bezahlung."})),
+    el("a",{class:"btn primary",href,text:"Weiter zu meinen Belegen",style:"min-height:52px;padding:0 22px"}));
+  const cta=document.querySelector(".hero-cta .btn.primary"); if(cta){ cta.href=href; cta.firstChild.textContent="Weiter zu meinen Belegen "; }
+  $("introTitle").textContent="Weiter, wo Sie aufgehört haben";
+  $("introLabel").textContent="Willkommen zurück";
+  const ip=document.querySelector("#upload > p.muted"); if(ip) ip.hidden=true;
+}
+function showPaidNote(row){
+  const box=$("continueBox"); box.hidden=false; box.classList.add("paid"); box.replaceChildren(
+    el("span",{class:"pill ok",text:"Bezahlt"}),
+    el("div",{class:"ctxt"}, el("h2",{text:`Ihre Steuererklärung ${row.jahr} ist bei uns`}),
+      el("p",{class:"muted",text:"Wir prüfen Ihre Belege. Für ein weiteres Steuerjahr können Sie unten neue Belege hochladen."})),
+    el("a",{class:"btn",href:"upload.html?fall="+row.id,text:"Ansehen"}));
+}
+
 function setupHeader(){
   const id=TX.CASE.id, guest=SP.isGuest(USER);
   if(USER && !guest){ $("who").textContent=USER.email||""; $("logout").hidden=false; }
+  if(id && !PRUEFER && (guest||!USER)) $("homeLink").hidden=false;
   $("home").href = PRUEFER ? "faelle.html" : guest||!USER ? "upload.html" : "kunde.html";
   const links = PRUEFER ? [["faelle.html","Steuerfälle",""],["upload.html?fall="+id,"Belege","1"],["ergebnis.html?fall="+id,"Ergebnis","2"]]
     : guest||!USER ? [] : [["kunde.html","Meine Steuererklärung",""]];
@@ -759,13 +795,15 @@ addEventListener("pagehide",()=>{ TX.flushCase().catch(()=>{}); });
     if(USER){
       let rows=[]; try{ rows=await SP.listFaelle(); }catch(_){}
       const open=rows.find(r=>!r.bezahlt && r.status==="offen");
-      if(open){ location.replace("upload.html?fall="+open.id); return; }
+      const paid=rows.find(r=>r.bezahlt || r.status!=="offen");
+      if(open) showContinue(open); else if(paid) showPaidNote(paid);
     }
     S=TX.emptyState(2025);
     document.body.classList.add("fresh");
-    $("hero").hidden=false; heroAnimation(); $("howto").hidden=false; $("yearPick").hidden=false; $("loginLink").hidden=false;
+    $("hero").hidden=false; heroAnimation(); $("howto").hidden=false; $("loginLink").hidden=false;
+    if(!CONTINUE) $("yearPick").hidden=false;
     $("yearSel").addEventListener("change",()=>{ S.year=+$("yearSel").value; S.overrides.year=S.year; });
-    $("introLabel").textContent="Schritt 1";
+    if(!CONTINUE) $("introLabel").textContent="Schritt 1";
     setupHeader(); TX.rebuild(S);
   } else {
     if(!USER){ location.replace("upload.html"); return; }
