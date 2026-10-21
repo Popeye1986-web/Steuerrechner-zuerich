@@ -682,6 +682,20 @@ window.TX = (function () {
     return out;
   }
 
-  return { bundTarif, formRows, CASE, STATUS, stateFromRow, loadCase, saveCase, flushCase, setCaseStatus, typeName, rebuild, ZH, BUND, S3A_PK, GEMEINDEN, KEYS, DOCTYPES, emptyState, normalize, loadState, saveState, CLOUD,
+  /* ---------- Fallnummer und Name ---------- */
+  // Fallnummer aus der Datenbank (Spalte nr, fallnummer.sql), sonst ein Kürzel aus der ID
+  const fallNr = row => row && row.nr ? "TF-" + row.nr : row && row.id ? "TF-" + String(row.id).slice(0, 6).toUpperCase() : "";
+  // Name: Angabe bei der Bezahlung, sonst die Personen aus den Belegen
+  function fallName(row) {
+    if (row.kunde_name && row.kunde_name.trim()) return row.kunde_name.trim();
+    try {
+      const S = stateFromRow(row); rebuild(S);
+      const names = S.persons.slice(0, nPersons(S)).map(p => p.name).filter(n => n && !/^Person \d$/.test(n));
+      if (names.length) return names.join(" und ");
+    } catch (_) {}
+    return "Noch ohne Namen";
+  }
+
+  return { fallNr, fallName, bundTarif, formRows, CASE, STATUS, stateFromRow, loadCase, saveCase, flushCase, setCaseStatus, typeName, rebuild, ZH, BUND, S3A_PK, GEMEINDEN, KEYS, DOCTYPES, emptyState, normalize, loadState, saveState, CLOUD,
     nf, nf2, chf, clamp, married, nPersons, personName, valueOf, setValue, checklist, calc, taxes, uid };
 })();

@@ -63,7 +63,7 @@ window.SP = (function () {
 
   /* ---------- Steuerfälle ---------- */
   async function listFaelle() {
-    const { data, error } = await client.from(FAELLE).select("id,kunde_name,kunde_email,jahr,status,bezahlt,betrag_chf,zahlung_session,mail_gesendet_am,data,created_at,updated_at").order("updated_at", { ascending: false });
+    const { data, error } = await client.from(FAELLE).select("*").order("updated_at", { ascending: false });
     if (error) throw error;
     return data || [];
   }

@@ -49,6 +49,8 @@ td.acts .btn{margin-left:4px}
 @media (max-width:760px){.newcase .row{grid-template-columns:minmax(0,1fr)}}
 .msg{font-size:14.5px}
 .msg.bad{color:var(--bad)}
+.fnr{display:inline-block;font-family:var(--f-num);font-size:12.5px;font-weight:600;color:var(--red);background:var(--red-soft);border-radius:6px;padding:1px 7px;margin-bottom:4px}
+td.first b{display:block}
 </style>
 </head>
 <body class="pending">
@@ -88,13 +90,13 @@ td.acts .btn{margin-left:4px}
   <div class="kpis" id="kpis"></div>
 
   <div class="tools">
-    <div class="field"><label for="q" style="position:absolute;left:-9999px">Suchen</label><input id="q" type="text" placeholder="Kunde oder E-Mail suchen"></div>
+    <div class="field"><label for="q" style="position:absolute;left:-9999px">Suchen</label><input id="q" type="text" placeholder="Fallnummer, Name oder E-Mail suchen"></div>
     <select id="fYear" aria-label="Steuerjahr"><option value="">Alle Jahre</option><option value="2025">2025</option><option value="2026">2026</option></select>
   </div>
 
   <div class="card tablebox">
     <table>
-      <thead><tr><th>Kunde</th><th>Jahr</th><th>Status</th><th>Bezahlt</th><th class="r">Belege</th><th class="r">Fehlt</th><th class="r">Geschätzte Steuer</th><th>Geändert</th><th class="r"><span style="position:absolute;left:-9999px">Aktionen</span></th></tr></thead>
+      <thead><tr><th>Fall · Kunde</th><th>Jahr</th><th>Status</th><th>Bezahlt</th><th class="r">Belege</th><th class="r">Fehlt</th><th class="r">Geschätzte Steuer</th><th>Geändert</th><th class="r"><span style="position:absolute;left:-9999px">Aktionen</span></th></tr></thead>
       <tbody id="rows"></tbody>
     </table>
   </div>
@@ -133,20 +135,20 @@ function render(){
     el("span",{class:"label",text:TX.STATUS[k].t}), el("span",{class:"v",text:String(counts[k])}), el("span",{class:"s",text:sub[k]}))));
   // Tabelle
   const q=$("q").value.trim().toLowerCase(), y=$("fYear").value;
-  const list=ROWS.filter(r=>(!FILTER||r.status===FILTER) && (!y||String(r.jahr)===y) && (!q||((r.kunde_name||"")+" "+(r.kunde_email||"")).toLowerCase().includes(q)));
+  const list=ROWS.filter(r=>(!FILTER||r.status===FILTER) && (!y||String(r.jahr)===y) && (!q||(TX.fallNr(r)+" "+r.nr+" "+r._name+" "+(r.kunde_email||"")).toLowerCase().includes(q)));
   const tb=$("rows"); tb.replaceChildren();
   if(!ROWS.length){ tb.append(el("tr",{}, el("td",{colspan:"9",class:"muted",style:"padding:32px 14px;text-align:center",text:"Noch keine Steuerfälle. Sobald ein Kunde auf der Startseite Belege hochlädt, erscheint er hier."}))); return; }
   if(!list.length){ tb.append(el("tr",{}, el("td",{colspan:"9",class:"muted",style:"padding:24px 14px",text:"Keine Fälle für diesen Filter."}))); return; }
   for(const r of list){
     const st=TX.STATUS[r.status]||TX.STATUS.offen, s=r._sum;
     let armed=false;
-    const del=el("button",{class:"btn ghost small",type:"button",text:"Löschen","aria-label":"Fall löschen: "+(r.kunde_name||"ohne Namen")});
+    const del=el("button",{class:"btn ghost small",type:"button",text:"Löschen","aria-label":"Fall löschen: "+TX.fallNr(r)+" "+r._name});
     del.addEventListener("click",async()=>{
       if(!armed){ armed=true; del.textContent="Wirklich löschen?"; setTimeout(()=>{armed=false; del.textContent="Löschen";},4000); return; }
       try{ await SP.deleteFall(r.id); ROWS=ROWS.filter(x=>x.id!==r.id); render(); toast("Fall gelöscht"); }catch(_){ toast("Löschen fehlgeschlagen"); }
     });
     tb.append(el("tr",{},
-      el("td",{class:"first"}, el("b",{text:r.kunde_name||"Noch ohne Namen"}), el("span",{class:"sub",text:r.kunde_email||(r.bezahlt?"":"E-Mail folgt bei der Bezahlung")})),
+      el("td",{class:"first"}, el("span",{class:"fnr",text:TX.fallNr(r)}), el("b",{text:r._name}), el("span",{class:"sub",text:r.kunde_email||(r.bezahlt?"":"E-Mail folgt bei der Bezahlung")})),
       el("td",{class:"num","data-label":"Jahr",text:String(r.jahr)}),
       el("td",{"data-label":"Status"}, el("span",{class:"pill "+st.c,text:st.t})),
       el("td",{"data-label":"Bezahlt"}, r.bezahlt ? el("span",{class:"paid"}, el("span",{class:"pill ok",text:"✓ "+(r.betrag_chf!=null?TX.chf(r.betrag_chf):"")}), el("span",{class:"sub",text:r.mail_gesendet_am?"PDF gesendet":"PDF nicht gesendet"})) : el("span",{class:"muted",text:"–"})),
@@ -184,7 +186,7 @@ $("logout").addEventListener("click",()=>SP.logout());
   const user=await SP.requireUser();
   $("who").textContent=user.email||"";
   if(!(await SP.isPruefer())){ location.replace("kunde.html"); return; }
-  try{ ROWS=await SP.listFaelle(); for(const r of ROWS) r._sum=summarize(r); }
+  try{ ROWS=await SP.listFaelle(); for(const r of ROWS){ r._sum=summarize(r); r._name=TX.fallName(r); } }
   catch(_){ $("noAccess").textContent="Fälle konnten nicht geladen werden. Wurde faelle.sql in Supabase ausgeführt?"; $("noAccess").hidden=false; }
   document.body.classList.remove("pending");
   render();

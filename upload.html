@@ -666,7 +666,7 @@ function renderCase(){
     sel.value=st;
     sel.addEventListener("change",async()=>{ try{ await TX.setCaseStatus(sel.value); toast("Status: "+TX.STATUS[sel.value].t); render(); }catch(_){ toast("Status konnte nicht gespeichert werden"); sel.value=TX.CASE.row.status; } });
     bar.append(el("a",{class:"btn ghost small",href:"faelle.html",text:"← Alle Fälle"}),
-      el("div",{class:"who"}, el("b",{text:row.kunde_name||"Neuer Kunde"}), el("span",{class:"muted",text:`${row.kunde_email||"E-Mail folgt bei der Bezahlung"} · Steuerjahr ${row.jahr}`})),
+      el("div",{class:"who"}, el("b",{text:TX.fallNr(row)+" · "+TX.fallName(row)}), el("span",{class:"muted",text:`${row.kunde_email||"E-Mail folgt bei der Bezahlung"} · Steuerjahr ${row.jahr}`})),
       el("label",{for:"statusSel",class:"label",text:"Status"}), sel);
     $("toResult").hidden=false; $("toResult").href="ergebnis.html?fall="+row.id;
     $("submitPanel").hidden=true;
@@ -814,7 +814,7 @@ addEventListener("pagehide",()=>{ TX.flushCase().catch(()=>{}); });
     if(!SP.isGuest(USER)) SP.client.auth.onAuthStateChange(ev=>{ if(ev==="SIGNED_OUT") location.replace("login.html"); });
     onSave("saved");
     setupHeader();
-    if(PRUEFER){ $("introLabel").textContent="Prüferansicht"; $("introTitle").textContent="Belege von "+(TX.CASE.row.kunde_name||"neuem Kunden"); }
+    if(PRUEFER){ $("introLabel").textContent="Prüferansicht"; $("introTitle").textContent=TX.fallNr(TX.CASE.row)+" · "+TX.fallName(TX.CASE.row); }
     else { $("introLabel").textContent="Steuererklärung "+TX.CASE.row.jahr; }
     TX.rebuild(S);
   }

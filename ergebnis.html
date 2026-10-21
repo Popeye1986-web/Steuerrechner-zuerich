@@ -590,7 +590,7 @@ $("print").addEventListener("click",()=>window.print());
     send.disabled=false; send.textContent="Formular an Kunde senden";
   });
   $("caseBar").append(el("a",{class:"btn ghost small",href:"faelle.html",text:"← Alle Fälle"}),
-    el("div",{class:"who"}, el("b",{text:row.kunde_name||"Noch ohne Namen"}), el("span",{class:"muted",text:`${row.kunde_email||"E-Mail folgt bei der Bezahlung"} · Steuerjahr ${row.jahr}`})),
+    el("div",{class:"who"}, el("b",{text:TX.fallNr(row)+" · "+TX.fallName(row)}), el("span",{class:"muted",text:`${row.kunde_email||"E-Mail folgt bei der Bezahlung"} · Steuerjahr ${row.jahr}`})),
     el("div",{style:"display:flex;flex-direction:column;gap:2px;align-items:flex-start"}, send, sentInfo),
     el("label",{for:"statusSel",class:"label",text:"Status"}), sel);
   document.body.classList.remove("pending");
