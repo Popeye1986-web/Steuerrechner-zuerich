@@ -127,6 +127,11 @@ Nur bei Steuerrechnung, Veranlagung oder Steuererklärung: "steuern" mit gemeind
 Trage dieselben Personen auch in "personen" ein (Person 1 "steuerpflichtig", Person 2 "ehepartner", Kinder "kind").
 Steht auf einem anderen Beleg (z.B. Steuerrechnung) die Konfession, gib sie in "steuern.konfession" an.
 
+6. Rechnungen und Aufstellungen (damit nichts doppelt gezählt wird):
+- Ist der Beleg EINE einzelne Rechnung oder Quittung (z.B. Handwerker-, Arzt-, Kita-Rechnung): "rechnung" mit aussteller (Firma oder Person, die die Rechnung stellt), datum (JJJJ-MM-TT), nummer (Rechnungsnummer, sonst null) und betrag (Rechnungstotal in CHF).
+- Enthält der Beleg eine AUFSTELLUNG mehrerer Rechnungen oder Kosten (z.B. Liegenschaftenverzeichnis oder Abrechnung mit Detail der Unterhaltskosten, Liste von Arzt- oder Kitarechnungen): "einzelposten" mit jeder einzelnen Zeile als {aussteller, datum, nummer, betrag, key}. key ist der Schlüssel aus Punkt 3, zu dem die Zeile gehört. Höchstens 80 Zeilen.
+- Sonst "rechnung": null und "einzelposten": [].
+
 Regeln:
 - Beträge nur aus dem Jahr ${year} bzw. per 31.12.${year}. Andere Jahre trotzdem auslesen und in "hinweise" nennen.
 - Bei einer Steuerrechnung oder Steuererklärung eines Vorjahres KEINE Beträge in "positionen" übernehmen, nur "steuern", "personalien" und Personen.
@@ -134,7 +139,7 @@ Regeln:
 - Keine AHV-Nummern, IBAN oder Kontonummern ausgeben.
 
 Antworte nur mit JSON:
-{"dokumenttyp":"lohnausweis","jahr":${year},"inhaber":{"vorname":"","nachname":"","geburtsdatum":null},"personen":[{"vorname":"","nachname":"","geburtsdatum":null,"rolle":"steuerpflichtig"}],"adresse":{"plz":"","ort":""},"zivilstand":null,"lohnausweis":null,"steuern":null,"personalien":null,"positionen":[{"key":"nettolohn","betrag":0,"sicherheit":"hoch"}],"hinweise":[]}`;
+{"dokumenttyp":"lohnausweis","jahr":${year},"inhaber":{"vorname":"","nachname":"","geburtsdatum":null},"personen":[{"vorname":"","nachname":"","geburtsdatum":null,"rolle":"steuerpflichtig"}],"adresse":{"plz":"","ort":""},"zivilstand":null,"lohnausweis":null,"steuern":null,"personalien":null,"positionen":[{"key":"nettolohn","betrag":0,"sicherheit":"hoch"}],"rechnung":null,"einzelposten":[],"hinweise":[]}`;
 
   const fileBlock = mediaType === "application/pdf"
     ? { type: "document", source: { type: "base64", media_type: mediaType, data } }
@@ -144,7 +149,7 @@ Antworte nur mit JSON:
     const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({ model: process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5", max_tokens: 3500,
+      body: JSON.stringify({ model: process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5", max_tokens: 6000,
         messages: [{ role: "user", content: [fileBlock, { type: "text", text: prompt }] }] })
     });
     if (!r.ok) { const t = await r.text(); console.error("Anthropic", r.status, t.slice(0, 500)); return res.status(502).json({ error: "upstream", status: r.status }); }
@@ -171,6 +176,12 @@ Antworte nur mit JSON:
       if (/christ/.test(t)) return "christkatholisch"; if (/kath/.test(t)) return "katholisch"; if (/ref|evang|protest/.test(t)) return "reformiert";
       if (/kein|ander|konfessionslos|ohne|none/.test(t)) return "keine"; return null; };
     const prior = typ === "steuerrechnung" || typ === "steuererklaerung";
+    const datum = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v || "")) ? String(v) : null;
+    const betrag = v => { const n = Math.abs(Number(v)); return isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : null; };
+    const rj = json.rechnung && typeof json.rechnung === "object" ? json.rechnung : null;
+    const rechnung = rj && betrag(rj.betrag) ? { aussteller: str(rj.aussteller, 80), datum: datum(rj.datum), nummer: str(rj.nummer, 40) || null, betrag: betrag(rj.betrag) } : null;
+    const einzelposten = (Array.isArray(json.einzelposten) ? json.einzelposten : []).filter(z => z && betrag(z.betrag)).slice(0, 80)
+      .map(z => ({ aussteller: str(z.aussteller, 80), datum: datum(z.datum), nummer: str(z.nummer, 40) || null, betrag: betrag(z.betrag), key: LABELS[z.key] ? z.key : null }));
     const pj = json.personalien && typeof json.personalien === "object" ? json.personalien : null;
     const pers = pj ? {
       gemeinde: str(pj.gemeinde, 60),
@@ -199,6 +210,7 @@ Antworte nur mit JSON:
       lohnausweis: typ === "lohnausweis" ? la : null, steuern: prior ? stx : null,
       personalien: typ === "steuererklaerung" ? pers : null,
       positionen: prior ? [] : positionen,
+      rechnung: prior ? null : rechnung, einzelposten: prior ? [] : einzelposten,
       hinweise: (Array.isArray(json.hinweise) ? json.hinweise : []).map(v => str(v, 160)).slice(0, 3)
     });
   } catch (e) {

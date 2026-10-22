@@ -435,6 +435,91 @@ window.TX = (function () {
 
   const PRIOR = ["steuerrechnung", "steuererklaerung"];
   const KIRCHE = ["reformiert", "katholisch", "christkatholisch"];
+  /* ---------- Doppelte Belege erkennen und dazulernen ---------- */
+  // LEARN: frühere Entscheide der Prüfer (Tabelle «lernregeln»). null = nicht geladen (z.B. beim Kunden oder auf dem Server).
+  const LEARN = { rows: null };
+  const RECHTSFORM = /\b(ag|gmbh|sa|sàrl|sarl|kg|klg|co|cie|und|&|inh|inhaber)\b/g;
+  const normName = v => String(v || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(RECHTSFORM, " ").replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+  const normNr = v => String(v || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  function sameName(a, b) {
+    const x = normName(a), y = normName(b);
+    if (!x || !y) return null;
+    if (x === y || x.includes(y) || y.includes(x)) return true;
+    const A = new Set(x.split(" ").filter(w => w.length > 2)), B = y.split(" ").filter(w => w.length > 2);
+    if (!A.size || !B.length) return false;
+    const hit = B.filter(w => A.has(w)).length;
+    return hit / Math.min(A.size, B.length) >= 0.5;
+  }
+  // Merkmale eines Treffers als kurzer Text, z.B. "betrag+aussteller+datum"
+  function sigOf(f) { return ["betrag", f.aussteller && "aussteller", f.datum && "datum", f.nummer && "nummer"].filter(Boolean).join("+"); }
+  // Gelernte Regel: gleicher Aussteller und gleiche Merkmale → letzter Entscheid; sonst gleiche Belegtypen und Merkmale mit mindestens 3 einheitlichen Entscheiden
+  function learned(tA, tB, sig, name) {
+    const rows = LEARN.rows; if (!rows || !rows.length) return null;
+    const same = rows.filter(r => r.typ_a === tA && r.typ_b === tB && r.merkmale === sig);
+    const n = normName(name);
+    const sup = n ? same.filter(r => r.aussteller && r.aussteller === n) : [];
+    if (sup.length) return { entscheid: sup[sup.length - 1].entscheid, n: sup.length, art: "Aussteller" };
+    if (same.length >= 3 && same.every(r => r.entscheid === same[0].entscheid)) return { entscheid: same[0].entscheid, n: same.length, art: "Belegtyp" };
+    return null;
+  }
+  function findDuplicates(S) {
+    const docs = S.docs || [];
+    const lists = docs.filter(d => d.result && Array.isArray(d.result.einzelposten) && d.result.einzelposten.length);
+    for (const d of docs) {
+      const prev = d.dup || null; d.dup = null;
+      const r = d.result; if (!r || !lists.length) continue;
+      if (Array.isArray(r.einzelposten) && r.einzelposten.length) continue; // Aufstellungen selbst nicht prüfen
+      // Betrag der Einzelrechnung: aus «rechnung», sonst die einzige Position
+      const pos = (r.positionen || []).filter(p => KEYS[p.key] && +p.betrag > 0);
+      const amt = r.rechnung && +r.rechnung.betrag > 0 ? +r.rechnung.betrag : (pos.length === 1 ? +pos[0].betrag : 0);
+      if (!amt) continue;
+      const tol = Math.max(1, amt * 0.005);
+      let best = null;
+      for (const L of lists) {
+        if (L.id === d.id) continue;
+        L.result.einzelposten.forEach((z, i) => {
+          if (Math.abs((+z.betrag || 0) - amt) > tol) return;
+          const rc = r.rechnung || {};
+          const f = { aussteller: sameName(rc.aussteller, z.aussteller) === true, datum: !!(rc.datum && z.datum && rc.datum === z.datum), nummer: !!(normNr(rc.nummer) && normNr(rc.nummer) === normNr(z.nummer)) };
+          const score = 1 + (f.aussteller ? 2 : 0) + (f.datum ? 1 : 0) + (f.nummer ? 3 : 0);
+          if (!best || score > best.score) best = { L, z, i, f, score };
+        });
+      }
+      if (!best) continue;
+      const { L, z, i, f } = best;
+      // Welche Position der Einzelrechnung ist betroffen? Gleicher Schlüssel wie die Zeile, sonst der betragsnächste.
+      const keys = Object.keys(Object.assign({}, ...pos.map(p => ({ [p.key]: 1 })), d.edits || {}));
+      const key = keys.includes(z.key) ? z.key : (pos.slice().sort((a, b) => Math.abs(a.betrag - amt) - Math.abs(b.betrag - amt))[0] || {}).key || keys[0];
+      if (!key) continue;
+      const sig = sigOf(f);
+      const sure = f.nummer || (f.aussteller && (f.datum || !(r.rechnung && r.rechnung.datum && z.datum)));
+      const dup = { of: L.id, ofName: L.name, zeile: i, key, betrag: Math.min(amt, +z.betrag || amt), aussteller: (r.rechnung && r.rechnung.aussteller) || z.aussteller || "",
+        zeileText: [z.aussteller, z.datum, z.nummer].filter(Boolean).join(" · "), merkmale: sig, typA: d.type, typB: L.type,
+        sicher: !!sure, entscheid: null, quelle: null };
+      const dec = d.dupDecision && d.dupDecision.of === L.id ? d.dupDecision : null;
+      const lr = dec ? null : learned(d.type, L.type, sig, dup.aussteller);
+      if (dec) { dup.entscheid = dec.entscheid; dup.quelle = "pruefer"; }
+      else if (lr) { dup.entscheid = lr.entscheid; dup.quelle = "gelernt"; dup.gelernt = lr; }
+      else if (LEARN.rows === null && prev && prev.of === L.id && prev.quelle === "gelernt") { dup.entscheid = prev.entscheid; dup.quelle = "gelernt"; dup.gelernt = prev.gelernt; }
+      else if (sure) { dup.entscheid = "doppelt"; dup.quelle = "auto"; }
+      d.dup = dup;
+    }
+  }
+  // Entscheid des Prüfers speichern und für künftige Fälle merken
+  async function decideDuplicate(S, docId, entscheid) {
+    const d = (S.docs || []).find(x => x.id === docId); if (!d || !d.dup) return;
+    d.dupDecision = { of: d.dup.of, entscheid };
+    const rec = { typ_a: d.dup.typA, typ_b: d.dup.typB, merkmale: d.dup.merkmale, aussteller: normName(d.dup.aussteller) || null, betrag: Math.round(d.dup.betrag), entscheid };
+    if (LEARN.rows) LEARN.rows.push(rec);
+    try { if (window.SP && SP.client) await SP.client.from("lernregeln").insert(rec); } catch (_) {}
+  }
+  function undoDuplicate(S, docId) { const d = (S.docs || []).find(x => x.id === docId); if (d) delete d.dupDecision; }
+  async function loadLearn() {
+    try { if (!(window.SP && SP.client)) return; const { data, error } = await SP.client.from("lernregeln").select("typ_a,typ_b,merkmale,aussteller,entscheid").order("created_at");
+      LEARN.rows = error ? [] : (data || []); } catch (_) { LEARN.rows = []; }
+  }
+  const openDuplicates = S => (S.docs || []).filter(d => d.dup && !d.dup.entscheid);
+
   function rebuild(S) {
     const O = S.overrides = S.overrides || {};
     O.persons = O.persons || [{}, {}];
@@ -561,12 +646,17 @@ window.TX = (function () {
     S.sit.kita = has("kita"); S.sit.liegenschaft = has("liegenschaft"); S.sit.kredit = has("hypothek"); S.sit.spenden = has("spenden");
     S.sit.krankheit = has("krankheit"); S.sit.unterhalt = has("unterhalt");
 
+    // 7a. Doppelte Belege: Einzelrechnung, die schon in einer Aufstellung eines anderen Belegs enthalten ist
+    findDuplicates(S);
+
     // 7. Werte aus den Belegen neu aufbauen (Korrekturen pro Beleg gehen vor)
     S.items = [];
     for (const d of S.docs) {
       const vals = {};
       for (const p of ((d.result && d.result.positionen) || [])) { if (KEYS[p.key]) vals[p.key] = (vals[p.key] || 0) + (+p.betrag || 0); }
       for (const [k, v] of Object.entries(d.edits || {})) { if (KEYS[k]) vals[k] = +v || 0; }
+      // Doppelt erkannt (oder noch offen): Betrag nur einmal zählen, bis der Prüfer «separat» entscheidet
+      if (d.dup && d.dup.entscheid !== "separat" && vals[d.dup.key] != null && !(d.edits && d.edits[d.dup.key] != null)) vals[d.dup.key] = Math.max(0, vals[d.dup.key] - d.dup.betrag);
       const i = ownerIdx(d);
       for (const [k, v] of Object.entries(vals)) if (v) S.items.push({ id: d.id + "-" + k, key: k, person: KEYS[k].p ? i : "g", amount: v, source: "dok", docId: d.id });
       d.owner = i;
@@ -726,5 +816,6 @@ window.TX = (function () {
   }
 
   return { fallNr, fallName, bundTarif, formRows, CASE, STATUS, stateFromRow, loadCase, saveCase, flushCase, setCaseStatus, typeName, rebuild, ZH, BUND, S3A_PK, GEMEINDEN, KEYS, DOCTYPES, emptyState, normalize, loadState, saveState, CLOUD,
-    nf, nf2, chf, clamp, married, nPersons, personName, valueOf, setValue, checklist, calc, taxes, uid };
+    nf, nf2, chf, clamp, married, nPersons, personName, valueOf, setValue, checklist, calc, taxes, uid,
+    findDuplicates, decideDuplicate, undoDuplicate, loadLearn, openDuplicates, LEARN, normName };
 })();

@@ -114,5 +114,33 @@ const lohn = (F) => ({ dokumenttyp: "lohnausweis", jahr: 2025, inhaber: { vornam
 { const { R } = mitBelegen([lohn(false), { dokumenttyp: "oev", jahr: 2025, inhaber: { vorname: "Anna", nachname: "Meier" }, personen: [], positionen: [{ key: "oev_abo", betrag: 2100 }] }]);
   check("ÖV-Quittung → effektive Abokosten", R.P[0].fahrS, 2100); }
 
+/* 5. Doppelte Belege: Einzelrechnung, die schon in der Aufstellung der Liegenschaft steht (Fall: Sanitärrechnung 4'200) */
+const unt = S => S.items.filter(i => i.key === "liegenschaft_unterhalt").reduce((a, i) => a + i.amount, 0);
+const liste = (zeilen) => ({ dokumenttyp: "liegenschaft", jahr: 2025, inhaber: { vorname: "David", nachname: "Test" }, personen: [],
+  positionen: [{ key: "eigenmietwert", betrag: 24000 }, { key: "liegenschaft_unterhalt", betrag: 9700 }], rechnung: null, einzelposten: zeilen });
+const zeilen = [{ aussteller: "Sanitär Keller AG", datum: "2025-05-14", nummer: "R-2291", betrag: 4200, key: "liegenschaft_unterhalt" }, { aussteller: "Maler Frei GmbH", datum: "2025-08-02", nummer: null, betrag: 5500, key: "liegenschaft_unterhalt" }];
+const handw = (rc, betrag) => ({ dokumenttyp: "liegenschaft", jahr: 2025, inhaber: { vorname: "David", nachname: "Test" }, personen: [], positionen: [{ key: "liegenschaft_unterhalt", betrag }], rechnung: rc, einzelposten: [] });
+TX.LEARN.rows = [];
+{ const { S } = mitBelegen([handw({ aussteller: "Keller Sanitär", datum: "2025-05-14", nummer: null, betrag: 4200 }, 4200), liste(zeilen)]);
+  truthy("Gleicher Betrag, Aussteller und Datum → automatisch doppelt", S.docs[0].dup && S.docs[0].dup.entscheid === "doppelt" && S.docs[0].dup.quelle === "auto");
+  check("Unterhalt nur einmal gezählt", unt(S), 9700); }
+{ const { S } = mitBelegen([handw({ aussteller: "Muster", datum: null, nummer: "R-2291", betrag: 4200 }, 4200), liste(zeilen)]);
+  truthy("Gleiche Rechnungsnummer → automatisch doppelt", S.docs[0].dup && S.docs[0].dup.entscheid === "doppelt"); }
+{ const { S } = mitBelegen([handw(null, 4200), liste(zeilen)]);
+  truthy("Nur Betrag gleich → Prüfer fragen", S.docs[0].dup && S.docs[0].dup.entscheid === null && TX.openDuplicates(S).length === 1);
+  check("… vorläufig nur einmal gezählt", unt(S), 9700);
+  S.docs[0].dupDecision = { of: S.docs[0].dup.of, entscheid: "separat" }; TX.rebuild(S);
+  check("Prüfer sagt «separat» → beide gezählt", unt(S), 13900); }
+{ const { S } = mitBelegen([handw({ aussteller: "Garten Huber", datum: "2025-03-01", nummer: null, betrag: 1800 }, 1800), liste(zeilen)]);
+  truthy("Anderer Betrag → kein Verdacht", !S.docs[0].dup); check("… beide gezählt", unt(S), 11500); }
+// Dazulernen: Entscheid zum gleichen Aussteller wird beim nächsten Fall übernommen
+TX.LEARN.rows = [{ typ_a: "liegenschaft", typ_b: "liegenschaft", merkmale: "betrag+aussteller", aussteller: TX.normName("Sanitär Keller AG"), entscheid: "doppelt" }];
+{ const { S } = mitBelegen([handw({ aussteller: "Sanitär Keller AG", datum: "2025-06-30", nummer: null, betrag: 4200 }, 4200), liste(zeilen)]);
+  truthy("Gelernt beim gleichen Aussteller → doppelt", S.docs[0].dup && S.docs[0].dup.entscheid === "doppelt" && S.docs[0].dup.quelle === "gelernt"); }
+TX.LEARN.rows = [1, 2, 3].map(() => ({ typ_a: "liegenschaft", typ_b: "liegenschaft", merkmale: "betrag", aussteller: null, entscheid: "doppelt" }));
+{ const { S } = mitBelegen([handw(null, 4200), liste(zeilen)]);
+  truthy("3 gleiche Entscheide zu Belegtyp und Merkmal → gelernt", S.docs[0].dup && S.docs[0].dup.entscheid === "doppelt" && S.docs[0].dup.quelle === "gelernt"); }
+TX.LEARN.rows = null;
+
 console.log(`\n${ok} Prüfungen bestanden, ${fail} fehlgeschlagen`);
 process.exit(fail ? 1 : 0);

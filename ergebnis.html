@@ -315,6 +315,8 @@ function render(){
 function renderTips(){
   const tips=[], T=R.T;
   const add=(kind,title,text)=>tips.push(el("article",{class:"card tip"}, el("span",{class:"pill "+kind,text:title}), el("p",{text})));
+  for(const d of TX.openDuplicates(S)) add("warn","Möglicherweise doppelt", `«${d.name}» (${chf(d.dup.betrag)}) scheint bereits in «${d.dup.ofName}» enthalten zu sein. Vorläufig nur einmal gezählt. Bitte auf der Seite «Belege» entscheiden.`);
+  for(const d of (S.docs||[]).filter(x=>x.dup&&x.dup.entscheid==="doppelt")) add("mute","Nicht doppelt gezählt", `«${d.name}» (${chf(d.dup.betrag)}) ist bereits in «${d.dup.ofName}» enthalten.`);
   R.P.forEach(x=>{
     const slot = TX.checklist(S).find(c=>c.slot==="saeule3a:"+x.p);
     const docMissing = S.sit.saeule3a[x.p] && slot && slot.status==="fehlt";
@@ -642,6 +644,7 @@ $("print").addEventListener("click",()=>window.print());
   const res = await TX.loadCase();
   if(!res.pruefer){ location.replace("kunde.html"); return; }
   if(res.error){ location.replace("faelle.html"); return; }
+  await TX.loadLearn();
   S=res.state; TX.rebuild(S);
   const row=TX.CASE.row, user=res.user;
   $("who").textContent=user.email||""; $("logout").hidden=false; $("logout").addEventListener("click",()=>SP.logout());

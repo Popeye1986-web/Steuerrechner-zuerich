@@ -209,6 +209,11 @@ body.hascase .drop,body.hascase .needs,body.hascase #yearPick{display:none}
 .homelink{font-size:14px;color:var(--muted);text-decoration:none;font-weight:500}
 .homelink:hover{color:var(--ink)}
 .doc.unk{border-color:#f1d9ad;box-shadow:0 0 0 1px #f1d9ad inset,var(--shadow)}
+.dupbox{margin-top:12px;padding:14px 16px;border-radius:8px;display:flex;flex-direction:column;gap:10px;font-size:14.5px}
+.dupbox.open{background:var(--warn-soft);border:1px solid #ecd3a6;color:#5b3a06}
+.dupbox.done{background:var(--sheet-2);border:1px solid var(--line);color:var(--muted)}
+.dupbox.sep{background:var(--ok-soft);border:1px solid #bfe0cd;color:#145a37}
+.dupbox .btns{display:flex;flex-wrap:wrap;gap:8px}
 </style>
 </head>
 <body class="pending">
@@ -476,6 +481,8 @@ function renderDocs(){
   if(PRUEFER){
     const n=S.docs.filter(unerkannt).length;
     if(n) box.append(el("div",{class:"notice warn",role:"status"}, el("b",{text:`${n} Beleg${n>1?"e":""} nicht erkannt. `}), "Bitte unten beim Beleg den Typ wählen, die Person zuordnen und die Beträge eintragen. Mit «Ansehen» öffnen Sie die Datei."));
+    const od=TX.openDuplicates(S).length;
+    if(od) box.append(el("div",{class:"notice warn",role:"status"}, el("b",{text:`${od} möglicherweise doppelte${od>1?"":"r"} Beleg${od>1?"e":""}. `}), "Der Betrag ist vorläufig nur einmal gezählt. Bitte unten beim markierten Beleg entscheiden."));
   }
   $("docCount").textContent = S.docs.length ? S.docs.length+" Beleg"+(S.docs.length>1?"e":"") : "";
   if(!S.docs.length){ box.append(el("div",{class:"card empty-docs",text:"Noch keine Belege. Ziehen Sie alle Dateien auf einmal in das Feld oben."})); return; }
@@ -495,7 +502,8 @@ function renderDocs(){
     const unk=PRUEFER && unerkannt(d), manuell=PRUEFER && d.typeLocked && !unk;
     if(unk) row.insertBefore(el("span",{class:"pill warn",text:"Nicht erkannt"}), row.children[1]);
     else if(manuell) row.insertBefore(el("span",{class:"pill mute",text:"Von Hand zugeordnet"}), row.children[1]);
-    const card=el("article",{class:"card doc"+(unk?" unk":"")}, row);
+    const card=el("article",{class:"card doc"+(unk?" unk":"")+(PRUEFER&&d.dup&&!d.dup.entscheid?" unk":"")}, row);
+    if(PRUEFER && d.dup) card.append(dupBox(d));
     if(d.hint && d.status==="fertig") card.append(el("span",{class:"note",text:d.hint}));
 
     // Details: Typ, Person, Werte (nur für den Prüfer)
@@ -541,6 +549,24 @@ function renderDocs(){
     det.append(inner); card.append(det);
     box.append(card);
   }
+}
+
+// Möglicherweise doppelt: Entscheid des Prüfers, wird für künftige Fälle gemerkt
+function dupBox(d){
+  const u=d.dup, other=S.docs.find(x=>x.id===u.of), amt=TX.chf(u.betrag);
+  const line=u.zeileText?` (Zeile: ${u.zeileText}, ${amt})`:` (${amt})`;
+  const decide=async e=>{ await TX.decideDuplicate(S,d.id,e); commit(); toast(e==="doppelt"?"Gemerkt: nicht doppelt zählen":"Gemerkt: separat zählen"); };
+  const view=other&&other.path&&USER ? el("button",{class:"btn small ghost",type:"button",text:"Aufstellung ansehen",onclick:()=>viewDoc(other)}) : null;
+  if(!u.entscheid){
+    return el("div",{class:"dupbox open"},
+      el("p",{}, el("b",{text:"Möglicherweise doppelt. "}), `Dieser Beleg über ${amt} scheint bereits in «${u.ofName}» enthalten zu sein${line}. Übereinstimmung: ${u.merkmale.split("+").map(m=>({betrag:"Betrag",aussteller:"Aussteller",datum:"Datum",nummer:"Rechnungsnummer"})[m]||m).join(", ")}. Vorläufig wird der Betrag nur einmal gezählt.`),
+      el("div",{class:"btns"}, el("button",{class:"btn small primary",type:"button",text:"Ja, doppelt: nicht zählen",onclick:()=>decide("doppelt")}), el("button",{class:"btn small",type:"button",text:"Nein, separat zählen",onclick:()=>decide("separat")}), view));
+  }
+  const why = u.quelle==="pruefer" ? "Ihr Entscheid" : u.quelle==="gelernt" ? `gelernt aus ${u.gelernt&&u.gelernt.n||""} früheren Entscheid${u.gelernt&&u.gelernt.n>1?"en":""}${u.gelernt&&u.gelernt.art==="Aussteller"?" zum gleichen Aussteller":""}` : "automatisch erkannt (Betrag, Aussteller und Datum bzw. Rechnungsnummer stimmen überein)";
+  const txt = u.entscheid==="doppelt" ? `Bereits in «${u.ofName}» enthalten${line}. Wird nicht doppelt gezählt · ${why}.` : `Ähnlicher Betrag in «${u.ofName}»${line}. Wird separat gezählt · ${why}.`;
+  return el("div",{class:"dupbox "+(u.entscheid==="doppelt"?"done":"sep")}, el("p",{text:txt}),
+    el("div",{class:"btns"}, u.quelle==="pruefer" ? el("button",{class:"btn small ghost",type:"button",text:"Entscheid zurücksetzen",onclick:()=>{ TX.undoDuplicate(S,d.id); commit(); }})
+      : el("button",{class:"btn small ghost",type:"button",text:u.entscheid==="doppelt"?"Doch separat zählen":"Doch nicht zählen",onclick:()=>decide(u.entscheid==="doppelt"?"separat":"doppelt")}), view));
 }
 
 /* ---------- Erkannt ---------- */
@@ -843,6 +869,7 @@ addEventListener("pagehide",()=>{ TX.flushCase().catch(()=>{}); });
     if(!SP.isGuest(USER)) SP.client.auth.onAuthStateChange(ev=>{ if(ev==="SIGNED_OUT") location.replace("login.html"); });
     onSave("saved");
     setupHeader();
+    if(PRUEFER) await TX.loadLearn();
     if(PRUEFER){ $("introLabel").textContent="Prüferansicht"; $("introTitle").textContent=TX.fallNr(TX.CASE.row)+" · "+TX.fallName(TX.CASE.row); }
     else { $("introLabel").textContent="Steuererklärung "+TX.CASE.row.jahr; }
     TX.rebuild(S);
