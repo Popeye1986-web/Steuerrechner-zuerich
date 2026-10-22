@@ -47,6 +47,40 @@ td.amt{font-variant-numeric:tabular-nums;white-space:nowrap}
 .copy{border:1px solid var(--line);background:transparent;border-radius:4px;min-height:32px;padding:0 10px;font-size:13px;cursor:pointer;color:var(--muted)}
 .copy:hover{color:var(--ink);border-color:#b9c4d2}
 .copy.done{border-color:var(--ok);color:var(--ok)}
+.fctl{display:flex;gap:18px;flex-wrap:wrap;align-items:center}
+.vsw{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--sheet)}
+.vsw button{font:inherit;font-size:14px;font-weight:600;padding:7px 14px;border:0;background:none;color:var(--muted);cursor:pointer}
+.vsw button[aria-pressed="true"]{background:var(--navy);color:#fff}
+.sheets{display:flex;flex-direction:column;gap:28px}
+.sheet{background:#fff;border:1px solid var(--line);box-shadow:0 2px 4px rgba(14,26,43,.05),0 18px 40px -20px rgba(14,26,43,.25);padding:28px 30px 34px;max-width:980px}
+.sh{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;border-bottom:2px solid var(--ink);padding-bottom:10px;margin-bottom:4px}
+.sh b{display:block;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.sh strong{font-size:20px;font-weight:700;letter-spacing:-.01em}
+.sh span.pg{font-size:14px;font-weight:600;color:var(--muted);text-align:right}
+.fr{display:grid;grid-template-columns:52px minmax(0,1fr) 46px 150px 150px;gap:0 10px;align-items:center;padding:5px 0;border-bottom:1px dotted #c3ccd7;font-size:14.5px}
+.fr.cols{border-bottom:1px solid var(--line);font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:10px 0 6px;align-items:end}
+.fr.cols span:nth-child(n+4){text-align:center;line-height:1.25}
+.fr .fz{font-family:var(--f-num);font-weight:600;color:var(--red);font-size:13.5px}
+.fr .fl{min-width:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.fr .fl small{flex-basis:100%;font-size:12.5px;color:var(--muted)}
+.fr .fc{font-family:var(--f-num);font-size:12px;color:var(--muted);text-align:center;border:1px solid var(--line);border-radius:3px;padding:1px 0;background:var(--sheet-2)}
+.fr .fc:empty{border-color:transparent;background:none}
+.fb{font-family:var(--f-num);font-size:14.5px;text-align:right;min-height:30px;padding:4px 8px;border:1px solid #b9c4d1;background:#f7f9fc;border-radius:2px;color:var(--ink);cursor:pointer;width:100%;display:flex;align-items:center;justify-content:flex-end}
+button.fb:hover{border-color:var(--red);background:var(--red-soft)}
+button.fb.done{border-color:var(--ok);background:var(--ok-soft)}
+.fb.off{cursor:default;background:repeating-linear-gradient(135deg,#f1f4f8 0 6px,#e6ebf1 6px 7px);border-color:var(--line)}
+.fb.nil{cursor:default;color:#b4bdc9}
+.fr.head{border-bottom:0;padding-top:14px}
+.fr.head .fl{font-weight:700}
+.fr.sub .fl{padding-left:14px}
+.fr.summe .fl,.fr.tot .fl{font-weight:700}
+.fr.summe .fb,.fr.tot .fb{font-weight:700;border-width:2px;border-color:var(--ink)}
+.fr.tot{background:var(--red-soft);margin:6px -10px 0;padding:8px 10px;border-bottom:0}
+.fr.nil .fl{color:var(--muted)}
+.fdet{padding:6px 0 12px 62px;border-bottom:1px dotted #c3ccd7}
+.fdet table{width:100%}
+@media (max-width:760px){.sheet{padding:18px 14px}.fr{grid-template-columns:36px minmax(0,1fr) minmax(0,1fr);gap:6px 8px}.fr .fl{grid-column:2/4}.fr>:nth-child(3){display:none}.fr>:nth-child(4){grid-column:2}.fr>:nth-child(5){grid-column:3}.fr.cols>:nth-child(2){display:none}.fr.cols>:nth-child(4){grid-row:1}.fr.cols>:nth-child(5){grid-row:1}.fdet{padding-left:0}.sh strong{font-size:17px}}
+@media print{.sheet{box-shadow:none;break-after:page}.fb{cursor:default}}
 table.form tr.page td{background:var(--navy);color:#fff;font-weight:600;font-size:13px;letter-spacing:.06em;text-transform:uppercase;padding:10px 14px;border-bottom:0}
 table.form td{vertical-align:baseline}
 table.form td.code{font-family:var(--f-num);font-size:13.5px;color:var(--ink);white-space:nowrap;width:64px}
@@ -166,10 +200,11 @@ table.calc tr.h td{background:var(--sheet-2);font-weight:600;font-size:13px;lett
     <section class="block" aria-labelledby="h-z">
       <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 16px;align-items:baseline">
         <h2 id="h-z">Steuererklärung <span id="formYear"></span> · Formular Kanton Zürich</h2>
-        <span style="display:flex;gap:18px;flex-wrap:wrap"><label class="check noprint" for="allDetails" style="min-height:32px;font-size:14px"><input id="allDetails" type="checkbox">Alle Herkunftsangaben aufklappen</label><label class="check noprint" for="hideEmpty" style="min-height:32px;font-size:14px"><input id="hideEmpty" type="checkbox">Leere Zeilen ausblenden</label></span>
+        <span class="fctl noprint"><span class="vsw" role="group" aria-label="Ansicht"><button type="button" id="vForm" aria-pressed="true">Formular</button><button type="button" id="vTable" aria-pressed="false">Tabelle</button></span><label class="check" for="showAll" style="min-height:32px;font-size:14px"><input id="showAll" type="checkbox">Alle Zeilen anzeigen</label><label class="check" for="allDetails" style="min-height:32px;font-size:14px"><input id="allDetails" type="checkbox">Alle Herkunftsangaben aufklappen</label></span>
       </div>
-      <p class="note">Alle Ziffern in der Reihenfolge des Formulars «Steuererklärung» des Kantonalen Steueramts Zürich. Linke Spalte Staats- und Gemeindesteuer, rechte Spalte direkte Bundessteuer. Mit «Herkunft» sehen Sie bei jedem Betrag, aus welchen Belegen er stammt und wie er berechnet ist.</p>
-      <div class="card tablebox">
+      <p class="note">Alle Ziffern in der Reihenfolge des Formulars «Steuererklärung» des Kantonalen Steueramts Zürich. Linke Spalte Staats- und Gemeindesteuer, rechte Spalte direkte Bundessteuer. Leere Zeilen sind ausgeblendet, mit «Alle Zeilen anzeigen» sehen Sie das ganze Formular. Ein Klick auf einen Betrag kopiert ihn. Mit «Herkunft» sehen Sie, aus welchen Belegen er stammt.</p>
+      <div id="sheets" class="sheets"></div>
+      <div class="card tablebox" id="tableView" hidden>
         <table class="form">
           <thead><tr><th>Ziffer</th><th>Code</th><th>Bezeichnung</th><th class="r">Staatssteuer CHF</th><th class="r">Bundessteuer CHF</th><th class="noprint"><span style="position:absolute;left:-9999px">Kopieren</span></th></tr></thead>
           <tbody id="rows"></tbody>
@@ -428,9 +463,47 @@ function renderBelege(){
   if(!S.docs.length) box.append(el("p",{class:"note",text:"Noch keine Belege hochgeladen."}));
 }
 
+// Formular wie auf Papier: eine Seite pro Formularseite, Beträge in Feldern
+let VIEW="form";
+try{ VIEW=localStorage.getItem("tfView")||"form"; }catch(_){}
+function setView(v){ VIEW=v; try{ localStorage.setItem("tfView",v); }catch(_){}
+  $("vForm").setAttribute("aria-pressed",String(v==="form")); $("vTable").setAttribute("aria-pressed",String(v==="table"));
+  $("sheets").hidden = v!=="form"; $("tableView").hidden = v!=="table"; }
+function copyBox(value,label){
+  const b=el("button",{class:"fb",type:"button",title:"Klicken zum Kopieren","aria-label":"Betrag kopieren: "+label,text:fmt(value)});
+  b.addEventListener("click",()=>{ navigator.clipboard.writeText(String(Math.round(value))).then(()=>{ b.classList.add("done"); toast("Kopiert: "+fmt(value)); setTimeout(()=>b.classList.remove("done"),1200); }).catch(()=>toast("Kopieren nicht möglich")); });
+  return b;
+}
+function renderSheets(hide){
+  const box=$("sheets"); box.replaceChildren();
+  let sheet=null;
+  const cols=()=>el("div",{class:"fr cols"}, el("span",{text:"Ziffer"}), el("span",{}), el("span",{text:"Code"}), el("span",{text:"Staats- und Gemeindesteuer CHF"}), el("span",{text:"Direkte Bundessteuer CHF"}));
+  for(const r of FORM){
+    if(r.kind==="page"){ const [t,...rest]=r.l.split(" · ");
+      sheet=el("article",{class:"sheet"}, el("header",{class:"sh"}, el("span",{}, el("b",{text:"Kanton Zürich · "+S.year}), el("strong",{text:"Steuererklärung"})), el("span",{class:"pg"}, rest.join(" · "), el("br"), t)), cols());
+      box.append(sheet); continue; }
+    if(!sheet) continue;
+    if(r.kind==="head"){
+      if(hide){ const idx=FORM.indexOf(r); const kids=[]; for(let i=idx+1;i<FORM.length && FORM[i].kind==="wert" && FORM[i].sub;i++) kids.push(FORM[i]); if(!kids.some(k=>Math.round(k.s)||Math.round(k.b))) continue; }
+      sheet.append(el("div",{class:"fr head"}, el("span",{class:"fz",text:r.z}), el("span",{class:"fl",text:r.l}), el("span"), el("span"), el("span"))); continue; }
+    const empty = !Math.round(r.s||0) && !Math.round(r.b||0);
+    if(hide && empty && r.kind==="wert") continue;
+    const det = empty ? null : detailsFor(r);
+    let dbox=null, dbtn=null;
+    if(det){ dbox=el("div",{class:"fdet",hidden:!$("allDetails").checked}, detailTable(det));
+      dbtn=el("button",{class:"dbtn noprint",type:"button","aria-expanded":String($("allDetails").checked),text:"Herkunft"});
+      dbtn.addEventListener("click",()=>{ const o=dbox.hidden; dbox.hidden=!o; dbtn.setAttribute("aria-expanded",String(o)); }); }
+    const sBox = Math.round(r.s||0) ? copyBox(r.s,"Ziffer "+r.z+" "+r.l) : el("span",{class:"fb nil",text:""});
+    const bBox = r.staat ? el("span",{class:"fb off","aria-label":"nur Staatssteuer"}) : (Math.round(r.b||0) ? copyBox(r.b,"Ziffer "+r.z+" "+r.l+" Bund") : el("span",{class:"fb nil",text:""}));
+    const cls=["fr", r.kind==="wert"?"":(r.kind==="total"?"tot":r.kind), r.sub?"sub":"", empty?"nil":""].filter(Boolean).join(" ");
+    sheet.append(el("div",{class:cls}, el("span",{class:"fz",text:r.z}), el("span",{class:"fl"}, r.l, dbtn, r.note?el("small",{text:r.note}):null), el("span",{class:"fc",text:r.code!=null?String(r.code):""}), sBox, bBox));
+    if(dbox) sheet.append(dbox);
+  }
+}
 function renderRows(){
   FORM=buildForm();
-  const hide=$("hideEmpty").checked, tb=$("rows"); tb.replaceChildren();
+  const hide=!$("showAll").checked, tb=$("rows"); tb.replaceChildren();
+  renderSheets(hide); setView(VIEW);
   for(const r of FORM){
     if(r.kind==="page"){ tb.append(el("tr",{class:"page"}, el("td",{colspan:"6",text:r.l}))); continue; }
     if(r.kind==="head"){
@@ -459,7 +532,8 @@ function renderRows(){
   }
   renderHelpers(); renderCalc(); renderPersonalien(); renderBelege();
 }
-$("hideEmpty").addEventListener("change",()=>renderRows());
+$("showAll").addEventListener("change",()=>renderRows());
+$("vForm").addEventListener("click",()=>setView("form")); $("vTable").addEventListener("click",()=>setView("table"));
 $("allDetails").addEventListener("change",()=>renderRows());
 
 function helperTable(title, ref, cols, lines){
