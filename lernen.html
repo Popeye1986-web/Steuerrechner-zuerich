@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Gelerntes · taxflix</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="styles.css">
+<style>
+body.pending main{visibility:hidden}
+.intro{display:flex;flex-direction:column;gap:10px;padding-block:36px 20px}
+.intro p{color:var(--muted);max-width:52em}
+.block{margin-bottom:36px}
+.block h2{font-size:22px;margin-bottom:6px}
+.block>p{color:var(--muted);margin-bottom:14px;font-size:15px}
+table.lt{width:100%;border-collapse:collapse;font-size:14.5px}
+table.lt th{text-align:left;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:10px 14px;border-bottom:1px solid var(--line)}
+table.lt td{padding:10px 14px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+table.lt td.n{font-family:var(--f-num);text-align:right;white-space:nowrap}
+table.lt tr.off td{color:var(--muted);text-decoration:line-through}
+.empty{padding:22px;color:var(--muted)}
+.filter{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.filter input{font:inherit;font-size:15px;min-height:40px;padding:6px 12px;border:1px solid var(--line);border-radius:8px;min-width:260px}
+</style>
+</head>
+<body class="pending">
+<header class="top">
+  <div class="page">
+    <a class="wordmark" href="faelle.html" aria-label="taxflix">tax<b>flix</b></a>
+    <ol class="steps" aria-label="Navigation"><li><a href="faelle.html">Steuerfälle</a></li><li><a href="lernen.html" aria-current="page">Gelerntes</a></li></ol>
+    <div class="account"><span id="who"></span><button class="btn small" id="logout" type="button">Abmelden</button></div>
+  </div>
+</header>
+
+<main class="page">
+  <div class="intro">
+    <span class="label">Prüferansicht</span>
+    <h1>Gelerntes</h1>
+    <p>Hier steht, was taxflix aus den Entscheiden der Prüfer gelernt hat. Daraus entstehen Vorschläge bei neuen Fällen und Hinweise für das Auslesen. Falsches können Sie löschen; es wird dann nicht mehr verwendet. Gespeichert sind keine Kundendaten, nur Rechnungssteller, Stichworte aus Dateinamen, Belegtyp und Ziffer.</p>
+  </div>
+  <div class="notice warn" id="noTable" hidden style="margin-bottom:16px">Die Tabellen für das Lernen fehlen noch. Bitte die Datei <b>supabase/lernen.sql</b> einmal im Supabase SQL Editor ausführen.</div>
+  <div class="filter"><input id="q" type="search" placeholder="Suchen, z.B. Sanitär oder Ziffer 6" aria-label="Gelerntes durchsuchen"></div>
+
+  <section class="block" aria-labelledby="h-z">
+    <h2 id="h-z">Zuordnungen zu Ziffern und Belegtypen</h2>
+    <p>Wenn ein Prüfer einen Betrag einer Ziffer zuweist oder den Belegtyp ändert.</p>
+    <div class="card tablebox"><table class="lt"><thead><tr><th>Erkannt an</th><th>Gelernt</th><th class="n">Anzahl</th><th>Zuletzt</th><th></th></tr></thead><tbody id="zRows"></tbody></table></div>
+  </section>
+
+  <section class="block" aria-labelledby="h-d">
+    <h2 id="h-d">Doppelte Belege</h2>
+    <p>Entscheide «doppelt» oder «separat», wenn eine Einzelrechnung schon in einer Aufstellung steht.</p>
+    <div class="card tablebox"><table class="lt"><thead><tr><th>Erkannt an</th><th>Entscheid</th><th class="n">Anzahl</th><th>Zuletzt</th><th></th></tr></thead><tbody id="dRows"></tbody></table></div>
+  </section>
+</main>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script src="taxcore.js"></script>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+function el(tag, attrs, ...kids){ const e=document.createElement(tag); for(const [k,v] of Object.entries(attrs||{})){ if(v==null||v===false) continue; if(k==="class") e.className=v; else if(k==="text") e.textContent=v; else if(k.startsWith("on")) e.addEventListener(k.slice(2),v); else e.setAttribute(k, v===true?"":v); } for(const c of kids) if(c!=null) e.append(c); return e; }
+function toast(t){ const e=$("toast"); e.textContent=t; e.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>e.hidden=true,2400); }
+let Z=[], D=[];
+const day = ts => ts ? new Date(ts).toLocaleDateString("de-CH") : "";
+const zif = k => { if(/^typ:/.test(k)) return "Belegtyp: "+TX.typeName(k.slice(4)); const v=TX.KEYS[k]; return v ? (v.z&&v.z!=="WV"?"Ziffer "+v.z+" · ":"Vermögen · ")+v.l : k; };
+const MERK = m => m.split("+").map(x=>({betrag:"Betrag",aussteller:"Aussteller",datum:"Datum",nummer:"Rechnungsnummer"})[x]||x).join(", ");
+function group(rows, keyFn){ const m=new Map(); for(const r of rows){ const k=keyFn(r); if(!m.has(k)) m.set(k,{rows:[],first:r}); m.get(k).rows.push(r); } return [...m.values()]; }
+async function off(table, ids){
+  if(!confirm("Diese gelernte Regel löschen? Sie wird danach nicht mehr verwendet.")) return;
+  try{ for(const id of ids){ const { error }=await SP.client.from(table).update({aktiv:false}).eq("id",id); if(error) throw error; } toast("Gelöscht"); await load(); }
+  catch(_){ toast("Löschen nicht möglich"); }
+}
+function render(){
+  const q=($("q").value||"").toLowerCase().trim();
+  const zb=$("zRows"); zb.replaceChildren();
+  const zg=group(Z.filter(r=>r.aktiv!==false), r=>[r.aussteller||"", r.stichwort||"", r.belegtyp||"", r.key].join("|"))
+    .map(g=>({g, wer:(g.first.aussteller?"Aussteller «"+g.first.aussteller+"»":"Stichwort «"+(g.first.stichwort||"")+"»")+(g.first.belegtyp&&!/^typ:/.test(g.first.key)?" · "+TX.typeName(g.first.belegtyp):""), was:zif(g.first.key)}))
+    .filter(x=>!q || (x.wer+" "+x.was).toLowerCase().includes(q));
+  if(!zg.length) zb.append(el("tr",{}, el("td",{colspan:"5",class:"empty",text:Z.some(r=>r.aktiv!==false)?"Keine Treffer.":"Noch nichts gelernt. Sobald ein Prüfer Beträge Ziffern zuordnet oder Belegtypen ändert, erscheint es hier."})));
+  for(const x of zg.sort((a,b)=>b.g.rows.length-a.g.rows.length)) zb.append(el("tr",{}, el("td",{text:x.wer}), el("td",{text:x.was}), el("td",{class:"n",text:String(x.g.rows.length)}), el("td",{text:day(x.g.rows[x.g.rows.length-1].created_at)}),
+    el("td",{}, el("button",{class:"btn small ghost",type:"button",text:"Löschen",onclick:()=>off("zuordnungen",x.g.rows.map(r=>r.id))}))));
+  const db=$("dRows"); db.replaceChildren();
+  const dg=group(D.filter(r=>r.aktiv!==false), r=>[r.typ_a,r.typ_b,r.merkmale,r.aussteller||"",r.entscheid].join("|"))
+    .map(g=>({g, wer:`${TX.typeName(g.first.typ_a)} in ${TX.typeName(g.first.typ_b)} · gleiche ${MERK(g.first.merkmale)}${g.first.aussteller?" · Aussteller «"+g.first.aussteller+"»":""}`, was:g.first.entscheid==="doppelt"?"doppelt, nicht zählen":"separat zählen"}))
+    .filter(x=>!q || (x.wer+" "+x.was).toLowerCase().includes(q));
+  if(!dg.length) db.append(el("tr",{}, el("td",{colspan:"5",class:"empty",text:D.some(r=>r.aktiv!==false)?"Keine Treffer.":"Noch keine Entscheide zu doppelten Belegen."})));
+  for(const x of dg.sort((a,b)=>b.g.rows.length-a.g.rows.length)) db.append(el("tr",{}, el("td",{text:x.wer}), el("td",{text:x.was}), el("td",{class:"n",text:String(x.g.rows.length)}), el("td",{text:day(x.g.rows[x.g.rows.length-1].created_at)}),
+    el("td",{}, el("button",{class:"btn small ghost",type:"button",text:"Löschen",onclick:()=>off("lernregeln",x.g.rows.map(r=>r.id))}))));
+}
+async function load(){
+  const a=await SP.client.from("zuordnungen").select("*").order("created_at");
+  const b=await SP.client.from("lernregeln").select("*").order("created_at");
+  $("noTable").hidden = !(a.error || b.error);
+  Z=a.error?[]:(a.data||[]); D=b.error?[]:(b.data||[]);
+  render();
+}
+$("q").addEventListener("input",render);
+$("logout").addEventListener("click",()=>SP.logout());
+(async function(){
+  if(!SP.configured || !SP.client){ document.body.classList.remove("pending"); $("noTable").hidden=false; return; }
+  const user=await SP.requireUser();
+  if(!(await SP.isPruefer())){ location.replace("kunde.html"); return; }
+  $("who").textContent=user.email||"";
+  await load();
+  document.body.classList.remove("pending");
+})();
+</script>
+</body>
+</html>

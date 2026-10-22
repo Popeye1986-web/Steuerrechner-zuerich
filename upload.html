@@ -224,6 +224,10 @@ body.hascase .drop,body.hascase .needs,body.hascase #yearPick{display:none}
 .lrow.off input,.lrow.off select{color:var(--muted);background:var(--sheet-2)}
 .lsum{font-size:14px}
 @media (max-width:720px){.lrow{grid-template-columns:minmax(0,1fr) 110px}.lrow select{grid-column:1/-1}.lrow.lhead span:nth-child(3),.lrow.lhead span:nth-child(4){display:none}.lrow .btn{grid-column:1/-1;justify-self:end}}
+.sugbox{margin-top:12px;padding:12px 16px;border-radius:8px;background:#eef4fb;border:1px solid #cfe0f2;display:flex;flex-direction:column;gap:8px;font-size:14.5px;color:#123a63}
+.sug{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px 16px;padding-top:8px;border-top:1px solid #d9e7f5}
+.sug small{display:block;font-size:12.5px;color:var(--muted)}
+.sug .btns{display:flex;gap:6px}
 </style>
 </head>
 <body class="pending">
@@ -515,6 +519,7 @@ function renderDocs(){
     else if(manuell) row.insertBefore(el("span",{class:"pill mute",text:"Von Hand zugeordnet"}), row.children[1]);
     const card=el("article",{class:"card doc"+(unk?" unk":"")+(PRUEFER&&d.dup&&!d.dup.entscheid?" unk":"")}, row);
     if(PRUEFER && d.dup) card.append(dupBox(d));
+    if(PRUEFER){ const sg=TX.suggestions(S,d); if(sg.length) card.append(suggestBox(d,sg)); }
     if(d.hint && d.status==="fertig") card.append(el("span",{class:"note",text:d.hint}));
 
     // Details: Typ, Person, Werte (nur für den Prüfer)
@@ -524,7 +529,7 @@ function renderDocs(){
     det.append(el("summary",{text: unk ? "Beleg selbst zuordnen: Typ, Person und Beträge" : d.result ? "Werte ansehen und korrigieren" : "Typ und Werte"}));
     const inner=el("div",{class:"box"});
     const tsel=el("select",{id:"t-"+d.id}); for(const t of DOCTYPES) tsel.append(el("option",{value:t.id,text:t.name}));
-    tsel.value=d.type; tsel.addEventListener("change",()=>{ d.type=tsel.value; d.typeLocked=true; if(d.status==="fehler"){ d.status="gespeichert"; d.error=null; } commit(); });
+    tsel.value=d.type; tsel.addEventListener("change",()=>{ d.type=tsel.value; d.typeLocked=true; TX.learnZuordnung({aussteller:d.result&&d.result.rechnung&&d.result.rechnung.aussteller, stichwort:d.name, key:"typ:"+tsel.value}); if(d.status==="fehler"){ d.status="gespeichert"; d.error=null; } commit(); });
     const top=el("div",{class:"grid2"}, el("div",{class:"field"}, el("label",{for:"t-"+d.id,text:"Belegtyp"}), tsel));
     if(np===2){
       const psel=el("select",{id:"o-"+d.id}); [0,1].forEach(i=>psel.append(el("option",{value:i,text:TX.personName(S,i)})));
@@ -544,7 +549,7 @@ function renderDocs(){
         const v=(d.edits&&d.edits[k]!=null)?d.edits[k]:auto;
         const id=`e-${d.id}-${k}`;
         const inp=el("input",{id,type:"number",min:"0",step:"1",inputmode:"decimal",value:v?Math.round(v*100)/100:"",placeholder:"0"});
-        inp.addEventListener("change",()=>{ d.edits=d.edits||{}; d.edits[k]=Math.max(0,+inp.value||0); d.typeLocked=true; if(d.status==="fehler"){ d.status="gespeichert"; d.error=null; } commit(); });
+        inp.addEventListener("change",()=>{ d.edits=d.edits||{}; d.edits[k]=Math.max(0,+inp.value||0); d.typeLocked=true; if(!fromRes.includes(k) && d.edits[k]>0) TX.learnZuordnung({belegtyp:d.type, aussteller:d.result&&d.result.rechnung&&d.result.rechnung.aussteller, stichwort:d.name, key:k}); if(d.status==="fehler"){ d.status="gespeichert"; d.error=null; } commit(); });
         const unsure=((d.result&&d.result.positionen)||[]).some(p=>p.key===k&&p.sicherheit==="tief") && !(d.edits&&d.edits[k]!=null);
         g.append(el("div",{class:"field"}, el("label",{for:id}, el("span",{text:KEYS[k].l}), el("span",{class:unsure?"pill warn":"z",text:unsure?"prüfen":(KEYS[k].z==="WV"?"":KEYS[k].z)})), inp));
       }
@@ -573,7 +578,7 @@ function linesEditor(d){
   const opts=Object.entries(KEYS).sort((a,b)=>String(a[1].z).localeCompare(String(b[1].z),"de",{numeric:true}));
   const keySel=(l,id)=>{ const sel=el("select",{id,"aria-label":"Ziffer"}); sel.append(el("option",{value:"",text:"— nicht zählen —"}));
     for(const [k,v] of opts) sel.append(el("option",{value:k,text:(v.z&&v.z!=="WV"?"Ziffer "+v.z+" · ":"Vermögen · ")+v.l}));
-    sel.value=l.key||""; sel.addEventListener("change",()=>{ l.key=sel.value||null; commit(); }); return sel; };
+    sel.value=l.key||""; sel.addEventListener("change",()=>{ l.key=sel.value||null; if(l.key) TX.learnZuordnung({belegtyp:d.type, aussteller:l.aussteller, stichwort:l.text, key:l.key}); commit(); }); return sel; };
   const tbl=el("div",{class:"ltab",role:"table","aria-label":"Beträge auf dem Beleg"});
   tbl.append(el("div",{class:"lrow lhead",role:"row"}, el("span",{text:"Bezeichnung"}), el("span",{text:"Betrag CHF"}), el("span",{text:"Ziffer"}), el("span")));
   d.lines.forEach((l,i)=>{
@@ -594,6 +599,21 @@ function linesEditor(d){
   return wrap;
 }
 function confirmReset(d){ return !(d.lines||[]).some(l=>l.text||l.betrag) || window.confirm("Die einzelnen Zuordnungen dieses Belegs werden verworfen. Fortfahren?"); }
+
+// Vorschläge aus früheren Fällen: werden nur mit Klick übernommen
+function suggestBox(d,list){
+  const zif=k=>{ const v=KEYS[k]; return v ? (v.z&&v.z!=="WV"?"Ziffer "+v.z+" · ":"Vermögen · ")+v.l : "nicht zählen"; };
+  const box=el("div",{class:"sugbox"}, el("p",{}, el("b",{text:"Gelernt aus früheren Fällen"})));
+  for(const g of list){
+    const why=`${g.n}× so ${g.art==="typ"?"eingeordnet":"zugeordnet"}, gleicher ${g.via}`;
+    const txt = g.art==="typ" ? `Belegtyp: ${TX.typeName(g.to)} statt ${TX.typeName(d.type)}` : `«${g.text||"Beleg"}»${g.betrag?" ("+TX.chf(g.betrag)+")":""} → ${zif(g.to)}${g.from?" statt "+zif(g.from):""}`;
+    box.append(el("div",{class:"sug"}, el("span",{}, txt, el("small",{text:why})),
+      el("span",{class:"btns"},
+        el("button",{class:"btn small primary",type:"button",text:"Übernehmen",onclick:()=>{ TX.applySuggestion(S,d,g); OPENDET.add(d.id); commit(); toast("Vorschlag übernommen"); }}),
+        el("button",{class:"btn small ghost",type:"button",text:"Ignorieren",onclick:()=>{ d.ignoreSugg=[...(d.ignoreSugg||[]),g.id]; commit(); }}))));
+  }
+  return box;
+}
 
 // Möglicherweise doppelt: Entscheid des Prüfers, wird für künftige Fälle gemerkt
 function dupBox(d){

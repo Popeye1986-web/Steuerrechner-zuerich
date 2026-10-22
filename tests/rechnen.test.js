@@ -157,5 +157,24 @@ TX.LEARN.rows = null;
   check("Neue Zeile gezählt", TX.valueOf(S, "spenden"), 300);
   check("«nicht zählen» wird ignoriert", S.items.reduce((a, i) => a + i.amount, 0), 24000 + 4200 + 5500 + 300); }
 
+/* 7. Zuordnungen lernen: Vorschläge aus früheren Entscheiden */
+TX.LEARN.zu = [];
+{ const { S } = mitBelegen([liste(zeilen)]); truthy("Ohne Gelerntes keine Vorschläge", TX.suggestions(S, S.docs[0]).length === 0); }
+TX.LEARN.zu = [{ belegtyp: "liegenschaft", aussteller: TX.normName("Maler Frei GmbH"), stichwort: null, key: "uebrige_einkuenfte" }];
+{ const { S } = mitBelegen([liste(zeilen)]); const d = S.docs[0], sg = TX.suggestions(S, d);
+  truthy("Gleicher Aussteller → Vorschlag", sg.length === 1 && sg[0].to === "uebrige_einkuenfte" && sg[0].via === "Aussteller");
+  check("Vorschlag ändert nichts von selbst", TX.valueOf(S, "liegenschaft_unterhalt"), 9700);
+  TX.applySuggestion(S, d, sg[0]); TX.rebuild(S);
+  check("Übernommen: Betrag bei gelernter Ziffer", TX.valueOf(S, "uebrige_einkuenfte"), 5500);
+  check("… und nicht mehr beim Unterhalt", TX.valueOf(S, "liegenschaft_unterhalt"), 4200);
+  truthy("Danach kein Vorschlag mehr", TX.suggestions(S, d).length === 0); }
+TX.LEARN.zu = [{ belegtyp: "sonstiges", aussteller: null, stichwort: TX.stichwort("51_Berufskosten_Berechnung.pdf"), key: "oev_abo" }];
+{ const S = TX.emptyState(2025);
+  S.docs = [{ id: "a", name: "12_berufskosten-berechnung.pdf", type: "sonstiges", status: "fertig", result: { dokumenttyp: "sonstiges", personen: [], positionen: [{ key: "uebrige_einkuenfte", betrag: 1450 }] }, edits: {} }];
+  TX.rebuild(S); const sg = TX.suggestions(S, S.docs[0]);
+  truthy("Gleiches Stichwort im Dateinamen → Vorschlag ÖV", sg.length === 1 && sg[0].to === "oev_abo" && sg[0].art === "beleg");
+  TX.applySuggestion(S, S.docs[0], sg[0]); TX.rebuild(S); check("Übernommen: ÖV-Kosten", TX.valueOf(S, "oev_abo"), 1450); }
+TX.LEARN.zu = null;
+
 console.log(`\n${ok} Prüfungen bestanden, ${fail} fehlgeschlagen`);
 process.exit(fail ? 1 : 0);

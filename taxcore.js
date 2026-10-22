@@ -437,7 +437,7 @@ window.TX = (function () {
   const KIRCHE = ["reformiert", "katholisch", "christkatholisch"];
   /* ---------- Doppelte Belege erkennen und dazulernen ---------- */
   // LEARN: frühere Entscheide der Prüfer (Tabelle «lernregeln»). null = nicht geladen (z.B. beim Kunden oder auf dem Server).
-  const LEARN = { rows: null };
+  const LEARN = { rows: null, zu: null };
   const RECHTSFORM = /\b(ag|gmbh|sa|sàrl|sarl|kg|klg|co|cie|und|&|inh|inhaber)\b/g;
   const normName = v => String(v || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(RECHTSFORM, " ").replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
   const normNr = v => String(v || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -511,12 +511,61 @@ window.TX = (function () {
     d.dupDecision = { of: d.dup.of, entscheid };
     const rec = { typ_a: d.dup.typA, typ_b: d.dup.typB, merkmale: d.dup.merkmale, aussteller: normName(d.dup.aussteller) || null, betrag: Math.round(d.dup.betrag), entscheid };
     if (LEARN.rows) LEARN.rows.push(rec);
-    try { if (window.SP && SP.client) await SP.client.from("lernregeln").insert(rec); } catch (_) {}
+    try { if (typeof window !== "undefined" && window.SP && SP.client) await SP.client.from("lernregeln").insert(rec); } catch (_) {}
   }
   function undoDuplicate(S, docId) { const d = (S.docs || []).find(x => x.id === docId); if (d) delete d.dupDecision; }
   async function loadLearn() {
-    try { if (!(window.SP && SP.client)) return; const { data, error } = await SP.client.from("lernregeln").select("typ_a,typ_b,merkmale,aussteller,entscheid").order("created_at");
-      LEARN.rows = error ? [] : (data || []); } catch (_) { LEARN.rows = []; }
+    if (!(typeof window !== "undefined" && window.SP && SP.client)) return;
+    try { const { data, error } = await SP.client.from("lernregeln").select("typ_a,typ_b,merkmale,aussteller,entscheid,aktiv").order("created_at");
+      LEARN.rows = error ? [] : (data || []).filter(r => r.aktiv !== false); } catch (_) { LEARN.rows = []; }
+    try { const { data, error } = await SP.client.from("zuordnungen").select("belegtyp,aussteller,stichwort,key,aktiv,created_at").order("created_at");
+      LEARN.zu = error ? [] : (data || []).filter(r => r.aktiv !== false); } catch (_) { LEARN.zu = []; }
+  }
+  /* ---------- Zuordnungen lernen: Prüfer weist einen Betrag einer Ziffer zu oder ändert den Belegtyp ---------- */
+  // Stichwort aus Dateiname oder Zeilentext: ohne Endung, Zahlen und Satzzeichen, z.B. «51_Berufskosten_Berechnung.pdf» → «berufskosten berechnung»
+  const stichwort = v => normName(String(v || "").replace(/\.[a-z0-9]{2,4}$/i, "").replace(/[_\-]+/g, " ").replace(/\d+/g, " ")).split(" ").filter(w => w.length > 2).join(" ");
+  async function learnZuordnung(rec) {
+    const r = { belegtyp: rec.belegtyp || null, aussteller: normName(rec.aussteller) || null, stichwort: stichwort(rec.stichwort) || null, key: rec.key };
+    if (!r.key || (!r.aussteller && !r.stichwort)) return;
+    if (LEARN.zu) LEARN.zu.push(Object.assign({ created_at: new Date().toISOString() }, r));
+    try { if (typeof window !== "undefined" && window.SP && SP.client) await SP.client.from("zuordnungen").insert(r); } catch (_) {}
+  }
+  // Passende gelernte Ziffer: zuerst gleicher Aussteller, sonst gleiches Stichwort (bei gleichem Belegtyp). Letzter Entscheid zählt.
+  function learnedKey(belegtyp, aussteller, text, typOnly) {
+    const rows = (LEARN.zu || []).filter(r => typOnly ? /^typ:/.test(r.key) : !/^typ:/.test(r.key));
+    const a = normName(aussteller), w = stichwort(text);
+    let hit = a ? rows.filter(r => r.aussteller && r.aussteller === a) : [];
+    if (!hit.length && w) hit = rows.filter(r => r.stichwort && r.stichwort === w && (typOnly || !r.belegtyp || r.belegtyp === belegtyp));
+    if (!hit.length) return null;
+    const last = hit[hit.length - 1];
+    return { key: last.key, n: hit.filter(r => r.key === last.key).length, via: a && hit[0].aussteller === a ? "Aussteller" : "Stichwort" };
+  }
+  // Vorschläge für einen Beleg (nur Vorschläge, nichts wird automatisch geändert)
+  function suggestions(S, d) {
+    if (!LEARN.zu || !LEARN.zu.length || !d.result) return [];
+    const out = [], ign = new Set(d.ignoreSugg || []), r = d.result;
+    const t = learnedKey(d.type, r.rechnung && r.rechnung.aussteller, d.name, true);
+    if (t && t.key !== "typ:" + d.type && !ign.has(t.key)) out.push({ id: t.key, art: "typ", to: t.key.slice(4), n: t.n, via: t.via });
+    if (Array.isArray(d.lines)) {
+      d.lines.forEach(l => { if (l.learnedOff) return; const k = learnedKey(d.type, l.aussteller, l.text); if (k && KEYS[k.key] && k.key !== l.key && !ign.has(l.id + ">" + k.key)) out.push({ id: l.id + ">" + k.key, art: "zeile", line: l.id, text: l.text, betrag: l.betrag, from: l.key, to: k.key, n: k.n, via: k.via }); });
+    } else {
+      (r.einzelposten || []).forEach((z, i) => { const k = learnedKey(d.type, z.aussteller, [z.aussteller].join(" ")); if (k && KEYS[k.key] && k.key !== z.key && !ign.has("z" + i + ">" + k.key)) out.push({ id: "z" + i + ">" + k.key, art: "einzelposten", idx: i, text: [z.aussteller, z.datum].filter(Boolean).join(" · "), betrag: z.betrag, from: z.key, to: k.key, n: k.n, via: k.via }); });
+      const keys = [...new Set((r.positionen || []).map(p => p.key))];
+      if (keys.length <= 1 && !(r.einzelposten || []).length) {
+        const k = learnedKey(d.type, r.rechnung && r.rechnung.aussteller, d.name);
+        if (k && KEYS[k.key] && k.key !== keys[0] && !ign.has("all>" + k.key)) out.push({ id: "all>" + k.key, art: "beleg", text: d.name, betrag: (r.positionen || []).reduce((a, p) => a + (+p.betrag || 0), 0), from: keys[0] || null, to: k.key, n: k.n, via: k.via });
+      }
+    }
+    return out;
+  }
+  // Vorschlag übernehmen: Beleg wird auf einzelne Zeilen umgestellt und die betroffene Zeile der gelernten Ziffer zugewiesen
+  function applySuggestion(S, d, sg) {
+    if (sg.art === "typ") { d.type = sg.to; d.typeLocked = true; return; }
+    if (!Array.isArray(d.lines)) d.lines = initLines(d);
+    if (sg.art === "zeile") { const l = d.lines.find(x => x.id === sg.line); if (l) l.key = sg.to; }
+    else if (sg.art === "einzelposten") { const z = d.result.einzelposten[sg.idx]; const l = d.lines.find(x => x.aussteller === z.aussteller && Math.abs(x.betrag - z.betrag) < 0.01); if (l) l.key = sg.to; }
+    else if (sg.art === "beleg") { if (d.lines.length) d.lines.forEach(l => { if (l.key === sg.from || !l.key) l.key = sg.to; }); else if (sg.betrag) d.lines.push({ id: uid(), text: d.name, betrag: sg.betrag, key: sg.to }); }
+    d.typeLocked = true;
   }
   const openDuplicates = S => (S.docs || []).filter(d => d.dup && !d.dup.entscheid);
 
@@ -531,11 +580,11 @@ window.TX = (function () {
     for (const [k, v] of Object.entries(by)) {
       const zs = ez.filter(z => z.key === k), zsum = zs.reduce((a, z) => a + (+z.betrag), 0);
       if (zs.length && zsum <= v + 1) {
-        zs.forEach(z => { used.add(z); lines.push({ id: uid(), text: txt(z), betrag: +z.betrag, key: k }); });
+        zs.forEach(z => { used.add(z); lines.push({ id: uid(), text: txt(z), aussteller: z.aussteller || "", betrag: +z.betrag, key: k }); });
         if (v - zsum > 1) lines.push({ id: uid(), text: "Übriger Betrag " + KEYS[k].l, betrag: Math.round((v - zsum) * 100) / 100, key: k });
-      } else if (v) lines.push({ id: uid(), text: KEYS[k].l, betrag: v, key: k });
+      } else if (v) lines.push({ id: uid(), text: KEYS[k].l, aussteller: (r.rechnung && r.rechnung.aussteller) || "", betrag: v, key: k });
     }
-    ez.filter(z => !used.has(z)).forEach(z => lines.push({ id: uid(), text: txt(z), betrag: +z.betrag, key: null }));
+    ez.filter(z => !used.has(z)).forEach(z => lines.push({ id: uid(), text: txt(z), aussteller: z.aussteller || "", betrag: +z.betrag, key: null }));
     return lines;
   }
 
@@ -843,5 +892,5 @@ window.TX = (function () {
 
   return { fallNr, fallName, bundTarif, formRows, CASE, STATUS, stateFromRow, loadCase, saveCase, flushCase, setCaseStatus, typeName, rebuild, ZH, BUND, S3A_PK, GEMEINDEN, KEYS, DOCTYPES, emptyState, normalize, loadState, saveState, CLOUD,
     nf, nf2, chf, clamp, married, nPersons, personName, valueOf, setValue, checklist, calc, taxes, uid,
-    findDuplicates, initLines, decideDuplicate, undoDuplicate, loadLearn, openDuplicates, LEARN, normName };
+    findDuplicates, initLines, decideDuplicate, learnZuordnung, learnedKey, suggestions, applySuggestion, stichwort, undoDuplicate, loadLearn, openDuplicates, LEARN, normName };
 })();

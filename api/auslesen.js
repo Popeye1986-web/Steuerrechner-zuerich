@@ -70,6 +70,29 @@ async function userFromToken(token) {
   return r.ok ? r.json() : null;
 }
 
+// Erfahrungen aus früheren Prüfungen (Tabelle «zuordnungen»), gelesen mit dem service_role-Schlüssel. Fehlt er, wird ohne gelesen.
+async function erfahrungen() {
+  const url = process.env.SUPABASE_URL, key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return "";
+  try {
+    const ac = new AbortController(); const t = setTimeout(() => ac.abort(), 2500);
+    const r = await fetch(url.replace(/\/$/, "") + "/rest/v1/zuordnungen?aktiv=eq.true&select=belegtyp,aussteller,stichwort,key&order=created_at.desc&limit=300",
+      { headers: { apikey: key, Authorization: "Bearer " + key }, signal: ac.signal });
+    clearTimeout(t);
+    if (!r.ok) return "";
+    const rows = await r.json(), seen = new Map();
+    for (const z of rows) {
+      const wer = z.aussteller ? `Aussteller «${z.aussteller}»` : z.stichwort ? `Beleg «${z.stichwort}»` : null;
+      if (!wer || !z.key) continue;
+      const was = /^typ:/.test(z.key) ? (TYPES[z.key.slice(4)] ? `ist Belegtyp ${z.key.slice(4)}` : null) : (LABELS[z.key] ? `Beträge gehören zu ${z.key}` : null);
+      if (!was) continue;
+      const k = wer + "|" + was; seen.set(k, (seen.get(k) || 0) + 1);
+    }
+    const top = [...seen.entries()].sort((a, b) => b[1] - a[1]).slice(0, 40).map(([k]) => "- " + k.replace("|", ": "));
+    return top.length ? `\n7. Erfahrungen aus früheren Prüfungen durch den Steuerexperten. Wende sie an, wenn Aussteller oder Beleg passen:\n${top.join("\n")}\n` : "";
+  } catch (_) { return ""; }
+}
+
 function parseJson(text) {
   try { return JSON.parse(text); } catch (_) {}
   const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -97,6 +120,7 @@ module.exports = async function handler(req, res) {
   if (!MEDIA.includes(mediaType) || !data) return res.status(400).json({ error: "bad_request" });
   if (data.length > 4.3 * 1024 * 1024) return res.status(413).json({ error: "too_large" });
 
+  const lern = await erfahrungen();
   const keyList = Object.entries(LABELS).map(([k, v]) => `- ${k}: ${v}`).join("\n");
   const typeList = Object.entries(TYPES).map(([k, v]) => `- ${k}: ${v}`).join("\n");
   const prompt = `Du liest einen Schweizer Beleg für die Steuererklärung ${year} des Kantons Zürich.
@@ -131,7 +155,7 @@ Steht auf einem anderen Beleg (z.B. Steuerrechnung) die Konfession, gib sie in "
 - Ist der Beleg EINE einzelne Rechnung oder Quittung (z.B. Handwerker-, Arzt-, Kita-Rechnung): "rechnung" mit aussteller (Firma oder Person, die die Rechnung stellt), datum (JJJJ-MM-TT), nummer (Rechnungsnummer, sonst null) und betrag (Rechnungstotal in CHF).
 - Enthält der Beleg eine AUFSTELLUNG mehrerer Rechnungen oder Kosten (z.B. Liegenschaftenverzeichnis oder Abrechnung mit Detail der Unterhaltskosten, Liste von Arzt- oder Kitarechnungen): "einzelposten" mit jeder einzelnen Zeile als {aussteller, datum, nummer, betrag, key}. key ist der Schlüssel aus Punkt 3, zu dem die Zeile gehört. Höchstens 80 Zeilen.
 - Sonst "rechnung": null und "einzelposten": [].
-
+${lern}
 Regeln:
 - Beträge nur aus dem Jahr ${year} bzw. per 31.12.${year}. Andere Jahre trotzdem auslesen und in "hinweise" nennen.
 - Bei einer Steuerrechnung oder Steuererklärung eines Vorjahres KEINE Beträge in "positionen" übernehmen, nur "steuern", "personalien" und Personen.
