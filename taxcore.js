@@ -71,6 +71,7 @@ window.TX = (function () {
     versicherung_uebrige: { l: "Übrige Versicherungsprämien, Sparzinsen", z: "15", p: false },
     pk_einkauf: { l: "Einkauf Pensionskasse", z: "16.1", p: true },
     weiterbildung: { l: "Berufsorientierte Weiterbildung", z: "16.2", p: true },
+    berufskosten_effektiv: { l: "Übrige Berufsauslagen effektiv (Arbeitskleider, Werkzeug, Software, Fachliteratur, Arbeitszimmer)", z: "11", p: true },
     kinderbetreuung: { l: "Kosten Kinderdrittbetreuung", z: "16.6", p: false },
     krankheitskosten: { l: "Selbst bezahlte Krankheitskosten", z: "22.1", p: false },
     spenden: { l: "Spenden an gemeinnützige Institutionen", z: "22.2", p: false },
@@ -116,6 +117,10 @@ window.TX = (function () {
       need: S => S.sit.spenden },
     { id: "weiterbildung", name: "Belege Weiterbildung", why: "Kurs- und Prüfungskosten.", keys: ["weiterbildung"], perPerson: true,
       need: (S, p) => S.sit.weiterbildung[p] },
+    // Übrige Berufsauslagen: Pauschale 3 % des Nettolohns, mind. 2'000, max. 4'000 (Staat ZH: LS 631.33 Ziff. I/3; Bund: Berufskostenverordnung, ESTV Wegleitung 2025).
+    // Höhere effektive Kosten anstelle der Pauschale, mit Aufstellung und allen Belegen; nicht zusätzlich; kein Abzug für vom Arbeitgeber bezahlte Kosten.
+    { id: "berufsauslagen", name: "Belege übrige Berufsauslagen", why: "Arbeitskleider, Werkzeug, Computer und Software, Fachliteratur, Berufsverband, Arbeitszimmer. Nur Kosten, die ausschliesslich beruflich sind und nicht vom Arbeitgeber bezahlt wurden. Lohnt sich, wenn sie zusammen mehr als 3 % des Nettolohns ausmachen (mindestens 2'000, höchstens 4'000).", keys: ["berufskosten_effektiv"], perPerson: true,
+      need: () => false, optional: true },
     { id: "krankheit", name: "Arzt-, Zahnarzt- und Spitalrechnungen", why: "Selbst bezahlte Kosten über 5 % des Nettoeinkommens.", keys: ["krankheitskosten"],
       need: S => S.sit.krankheit },
     { id: "unterhalt", name: "Belege Unterhaltsbeiträge", why: "Bezahlte oder erhaltene Alimente.", keys: ["unterhalt_bezahlt", "unterhalt_erhalten"],
@@ -309,11 +314,13 @@ window.TX = (function () {
         }
       };
       const verpf = lohn <= 0 ? 0 : pe.verpflegung === "voll" ? Math.min(3200, (+pe.tage || 0) * 15) : pe.verpflegung === "verbilligt" ? Math.min(1600, (+pe.tage || 0) * 7.5) : 0;
-      const uebrige = lohn > 0 ? clamp(lohn * .03, 2000, 4000) : 0;
+      // Übrige Berufsauslagen: Pauschale oder (falls höher) die effektiven, belegten Kosten, nicht beides
+      const uebrigePausch = lohn > 0 ? clamp(lohn * .03, 2000, 4000) : 0, uebrigeEff = lohn > 0 ? totP("berufskosten_effektiv", p) : 0;
+      const uebrige = Math.max(uebrigePausch, uebrigeEff);
       const nebenP = neben > 0 ? Math.min(neben, clamp(neben * .2, 800, 2400)) : 0;
       const erwerb = lohn + neben + selbst;
       const s3aCap = pe.pk ? S3A_PK : Math.min(S3A_OHNE, erwerb * .2);
-      return { p, lohn, neben, selbst, erwerb, verpf, uebrige, nebenP,
+      return { p, lohn, neben, selbst, erwerb, verpf, uebrige, uebrigePausch, uebrigeEff, nebenP,
         fahrS: Math.min(fahr("s"), Z.fahrMax), fahrB: Math.min(fahr("b"), BUND.fahrMax),
         s3a: Math.min(totP("saeule3a", p), s3aCap), s3aEff: totP("saeule3a", p), s3aCap,
         pkEinkauf: totP("pk_einkauf", p), weiterb: totP("weiterbildung", p),

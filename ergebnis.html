@@ -417,7 +417,13 @@ function detailsFor(r){
       if(pe.verpflegung==="voll") L.push(C(`Verpflegung auswärts: ${tage} Tage × 15 = ${n0(tage*15)}, höchstens 3’200`,x.verpf));
       else if(pe.verpflegung==="verbilligt") L.push(C(`Verpflegung verbilligt (Kantine): ${tage} Tage × 7.50 = ${n0(tage*7.5)}, höchstens 1’600`,x.verpf));
       else L.push(C("Verpflegung: kein Abzug",0));
-      L.push(C(`Übrige Berufsauslagen: 3 % × ${n0(x.lohn)} = ${n0(x.lohn*.03)}, mindestens 2’000, höchstens 4’000`,x.uebrige));
+      if(x.uebrigeEff>0){
+        L.push(...srcLines(["berufskosten_effektiv"],x.p,{quiet:true}));
+        L.push(C(`Übrige Berufsauslagen Pauschale: 3 % × ${n0(x.lohn)} = ${n0(x.lohn*.03)}, mindestens 2’000, höchstens 4’000`,x.uebrigePausch));
+        L.push(C(`Übrige Berufsauslagen effektiv gemäss Belegen`,x.uebrigeEff));
+        L.push(C(`→ ${x.uebrigeEff>x.uebrigePausch?"effektive Kosten sind höher und werden anstelle der Pauschale abgezogen":"Pauschale ist höher und wird abgezogen"}`,x.uebrige));
+        L.push(F("Effektive Kosten nur anstelle der Pauschale, nicht zusätzlich. Nur ausschliesslich berufliche, nicht vom Arbeitgeber bezahlte Kosten; Aufstellung mit allen Belegen beilegen. Bei Computer und Software den Privatanteil abziehen (ESTV: üblich 25 bis 50 %)."));
+      } else L.push(C(`Übrige Berufsauslagen: 3 % × ${n0(x.lohn)} = ${n0(x.lohn*.03)}, mindestens 2’000, höchstens 4’000`,x.uebrige));
       if(x.nebenP) L.push(C(`Nebenerwerb: 20 % × ${n0(x.neben)} = ${n0(x.neben*.2)}, mindestens 800, höchstens 2’400`,x.nebenP));
       sum("= Total Berufsauslagen",x.fahrS+x.verpf+x.uebrige+x.nebenP,x.fahrB+x.verpf+x.uebrige+x.nebenP); break; }
     case /^14\.[12]$/.test(z): { const x=P[pIdx]; if(!x) break;
@@ -625,7 +631,7 @@ function renderHelpers(){
     box.append(helperTable(`Berufsauslagen · ${TX.personName(S,x.p)}`, "Ziffer 11."+(x.p+1), ["Staat","Bund"], [
       [`Fahrkosten (${weg[pe.weg]||pe.weg}${km}${pe.geschaeftsauto?", Geschäftsauto":""})`, [x.fahrS, x.fahrB]],
       [`Verpflegung (${pe.verpflegung==="voll"?"auswärts":pe.verpflegung==="verbilligt"?"verbilligt":"keine"})`, [x.verpf, x.verpf]],
-      ["Übrige Berufsauslagen (3 % des Nettolohns, 2'000 bis 4'000)", [x.uebrige, x.uebrige]],
+      [x.uebrigeEff>x.uebrigePausch ? "Übrige Berufsauslagen effektiv gemäss Aufstellung (statt Pauschale)" : "Übrige Berufsauslagen (3 % des Nettolohns, 2'000 bis 4'000)", [x.uebrige, x.uebrige]],
       ...(x.nebenP?[["Nebenerwerb (20 %, 800 bis 2'400)", [x.nebenP, x.nebenP]]]:[]),
       ["Total Berufsauslagen", [x.fahrS+x.verpf+x.uebrige+x.nebenP, x.fahrB+x.verpf+x.uebrige+x.nebenP], "sum"]
     ]));
