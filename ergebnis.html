@@ -101,6 +101,12 @@ table.form tr.detail td{background:#f8fafc;padding:0 14px 12px 84px;border-botto
 .dtab td.src{color:var(--muted);font-size:12.5px}
 .dtab tr.f td{color:var(--info);font-style:italic;border-bottom:0}
 .dtab tr.dsum td{font-weight:700;border-top:1px solid var(--line);border-bottom:0}
+.dtab thead th{position:static;background:none;font-size:11px;padding:4px 8px;border-bottom:1px solid var(--line)}
+.dtab tr.h td{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--red);padding-top:12px;border-bottom:1px solid var(--line)}
+.dtab tr.dsub td:first-child{padding-left:24px;color:var(--muted);font-size:13px}
+.dtab tr.dmut td.amt{color:var(--muted);font-style:italic}
+.dtab tr.dcalc td:first-child{font-family:var(--f-num);font-size:12.5px}
+.vlink{margin-left:8px;font:inherit;font-size:12px;font-weight:600;color:var(--red);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline}
 .flag{display:inline-block;font-size:11px;font-weight:700;padding:1px 6px;border-radius:99px;margin-left:6px;vertical-align:1px}
 .flag.low{background:var(--warn-soft);color:var(--warn)}
 .flag.ed{background:var(--red-soft);color:var(--red)}
@@ -342,60 +348,111 @@ const buildForm=()=>TX.formRows(S,R);
 let FORM=[];
 /* ---------- Herkunft und Berechnung pro Ziffer ---------- */
 const KEYZ = z => Object.entries(TX.KEYS).filter(([k,v])=>v.z===z).map(([k])=>k);
-function srcLines(keys, p){
-  const out=[];
-  for(const it of S.items.filter(i=>keys.includes(i.key) && (p===undefined || i.person===p) && (i.person==="g" || i.person<R.np))){
+// Herkunft: jeder Beleg mit Dateiname, ausgelesenem Wert, Korrektur, Doppel-Abzug und den Einzelposten der Aufstellung
+function srcLines(keys, p, opt){
+  const out=[], o=opt||{};
+  const items=S.items.filter(i=>keys.includes(i.key) && (p===undefined || i.person===p) && (i.person==="g" || i.person<R.np));
+  if(!items.length){ if(!o.quiet) out.push({l:"Kein Beleg mit diesem Betrag", s:null, b:null, sub:true}); return out; }
+  out.push({h:"Belege"});
+  for(const it of items){
     const d=S.docs.find(x=>x.id===it.docId);
-    const pos=d&&d.result&&(d.result.positionen||[]).find(x=>x.key===it.key);
-    const edited=d&&d.edits&&d.edits[it.key]!=null;
-    out.push({l:TX.KEYS[it.key].l + (it.person!=="g"&&R.np===2?" · "+TX.personName(S,it.person):""), src:d?(TX.typeName(d.type)+" · "+d.name):"Eigene Angabe", s:+it.amount, b:+it.amount, low:pos&&pos.sicherheit==="tief"&&!edited, ed:edited});
+    const lab=TX.KEYS[it.key].l + (it.person!=="g"&&R.np===2?" · "+TX.personName(S,it.person):"");
+    if(!d){ out.push({l:lab, src:"Eigene Angabe", s:+it.amount, b:o.staat?null:+it.amount}); continue; }
+    const pos=(d.result&&d.result.positionen||[]).filter(x=>x.key===it.key);
+    const raw=pos.reduce((a,x)=>a+(+x.betrag||0),0);
+    const edited=d.edits&&d.edits[it.key]!=null;
+    const src="«"+d.name+"» · "+TX.typeName(d.type)+(d.result&&d.result.rechnung&&d.result.rechnung.aussteller?" · "+d.result.rechnung.aussteller:"")+(d.result&&d.result.rechnung&&d.result.rechnung.datum?" · "+d.result.rechnung.datum:"");
+    out.push({l:lab, src, s:+it.amount, b:o.staat?null:+it.amount, low:pos.some(x=>x.sicherheit==="tief")&&!edited, ed:edited, doc:d});
+    if(edited && Math.round(raw)!==Math.round(+d.edits[it.key])) out.push({l:`ausgelesen ${fmt(raw)}, vom Prüfer korrigiert auf ${fmt(+d.edits[it.key])}`, sub:true});
+    const dup=d.dup;
+    if(dup && dup.key===it.key && dup.entscheid!=="separat" && !edited){
+      out.push({l:`ausgelesen ${fmt(raw)}`, sub:true});
+      out.push({l:`minus bereits in «${dup.ofName}» enthalten${dup.zeileText?" ("+dup.zeileText+")":""}${dup.entscheid?"":" · noch offen"}`, s:-dup.betrag, b:o.staat?null:-dup.betrag, sub:true});
+    }
+    const ez=(d.result&&d.result.einzelposten||[]).filter(z=>z.key===it.key || (!z.key && pos.length));
+    if(ez.length){
+      out.push({l:"davon laut Aufstellung im Beleg:", sub:true});
+      ez.forEach(z=>out.push({l:"· "+[z.aussteller||"ohne Aussteller", z.datum, z.nummer].filter(Boolean).join(" · "), s:+z.betrag, b:o.staat?null:+z.betrag, sub:true, muted:true}));
+    }
   }
+  // Belege, die ganz als doppelt abgezogen sind, trotzdem zeigen
+  for(const d of S.docs.filter(d=>d.dup && keys.includes(d.dup.key) && d.dup.entscheid!=="separat" && !items.some(it=>it.docId===d.id) && (p===undefined || d.owner===p || TX.KEYS[d.dup.key].p===false))){
+    const raw=(d.result&&d.result.positionen||[]).filter(x=>x.key===d.dup.key).reduce((a,x)=>a+(+x.betrag||0),0);
+    out.push({l:TX.KEYS[d.dup.key].l, src:"«"+d.name+"» · "+TX.typeName(d.type), s:0, b:o.staat?null:0, doc:d});
+    out.push({l:`ausgelesen ${fmt(raw)}`, sub:true});
+    out.push({l:`minus bereits in «${d.dup.ofName}» enthalten${d.dup.zeileText?" ("+d.dup.zeileText+")":""}${d.dup.entscheid?"":" · Entscheid noch offen"}`, s:-d.dup.betrag, b:o.staat?null:-d.dup.betrag, sub:true});
+  }
+  const sameKey=new Set(items.map(i=>i.key)).size===1;
+  if(items.length>1 && sameKey){ const t=items.reduce((a,i)=>a+(+i.amount||0),0); out.push({l:"Total aus Belegen", s:t, b:o.staat?null:t, sum:true}); }
   return out;
 }
 const F = t => ({f:t});
+const H = t => ({h:t});
+const C = (l,s,b) => ({l, s, b:b===undefined?s:b, calc:true});
+const n0 = v => fmt(v), pc = v => (Math.round(v*1000)/10).toString().replace(".",".")+" %";
 function detailsFor(r){
   if(r.kind==="page"||r.kind==="head") return null;
   const z=r.z, P=R.P, Z=R.Z, B=TX.BUND, L=[];
   const pIdx = /^(11|14)\.(1|2)$/.test(z) ? (+z.split(".")[1]-1) : r.p;
   const sum=(lab,a,b)=>L.push({l:lab,s:a,b:b===undefined?a:b,sum:true});
   const rowsOf = zs => R.rows.filter(x=>zs.includes(x.z) && x.kind==="wert");
+  const row = zz => R.rows.find(x=>x.z===zz) || {s:0,b:0};
+  const tot = k => TX.valueOf(S,k);
   switch(true){
-    case /^11\.[12]$/.test(z): { const x=P[pIdx]; if(!x) break; const pe=S.persons[x.p];
-      const weg={oev:"ÖV-Abo",velo:"Velo (Pauschale 700)",pauschal:"Pauschale 700: Feld F nicht angekreuzt, keine ÖV-Quittung",auto:"Auto",motorrad:"Motorrad",keine:"kein Arbeitsweg",offen:"Arbeitsweg noch offen"}[pe.weg]||pe.weg;
-      L.push(...srcLines(["oev_abo"],x.p));
-      L.push({l:`Fahrkosten (${weg}${pe.weg==="auto"||pe.weg==="motorrad"?`, ${pe.km} km × 2 × ${pe.tage} Tage`:""}${pe.geschaeftsauto?", Geschäftsauto: kein Abzug":""})`,s:x.fahrS,b:x.fahrB});
-      L.push(F(`Fahrkosten höchstens ${fmt(Z.fahrMax)} (Staat) bzw. ${fmt(B.fahrMax)} (Bund)`));
-      L.push({l:`Verpflegung (${pe.verpflegung==="voll"?"auswärts, CHF 15 pro Tag, max. 3'200":pe.verpflegung==="verbilligt"?"verbilligt/Kantine, CHF 7.50 pro Tag, max. 1'600":"kein Abzug"})`,s:x.verpf,b:x.verpf});
-      L.push({l:`Übrige Berufsauslagen: 3 % von ${fmt(x.lohn)}, mind. 2'000, max. 4'000`,s:x.uebrige,b:x.uebrige});
-      if(x.nebenP) L.push({l:`Nebenerwerb: 20 % von ${fmt(x.neben)}, mind. 800, max. 2'400`,s:x.nebenP,b:x.nebenP});
-      sum("Total Berufsauslagen",x.fahrS+x.verpf+x.uebrige+x.nebenP,x.fahrB+x.verpf+x.uebrige+x.nebenP); break; }
+    case /^11\.[12]$/.test(z): { const x=P[pIdx]; if(!x) break; const pe=S.persons[x.p], tage=+pe.tage||0;
+      L.push(...srcLines(["nettolohn"],x.p));
+      if(pe.weg==="oev") L.push(...srcLines(["oev_abo"],x.p,{quiet:true}));
+      L.push(H("Berechnung"));
+      const weg={oev:"ÖV-Abo gemäss Quittung",velo:"Velo: Pauschale 700",pauschal:"Pauschale 700 (Lohnausweis Feld F nicht angekreuzt, keine ÖV-Quittung)",auto:"Auto",motorrad:"Motorrad",keine:"kein Arbeitsweg",offen:"Arbeitsweg noch offen"}[pe.weg]||pe.weg;
+      if(pe.geschaeftsauto) L.push(C("Fahrkosten: Geschäftsauto, kein Abzug",0));
+      else if(pe.weg==="auto"||pe.weg==="motorrad"){ const ks=pe.weg==="auto"?Z.kmAuto:.4, kb=pe.weg==="auto"?B.kmAuto[S.year]:.4;
+        L.push(C(`Fahrkosten ${weg}: ${pe.km} km × 2 × ${tage} Tage × ${ks.toFixed(2)} (Staat) bzw. ${kb.toFixed(2)} (Bund)`, pe.km*2*tage*ks, pe.km*2*tage*kb)); }
+      else L.push(C(`Fahrkosten: ${weg}`, pe.weg==="oev"?tot("oev_abo"):(pe.weg==="velo"||pe.weg==="pauschal")?700:0));
+      if(x.fahrS<(L[L.length-1].s||0)||x.fahrB<(L[L.length-1].b||0)) L.push(C(`→ begrenzt auf höchstens ${n0(Z.fahrMax)} (Staat) bzw. ${n0(B.fahrMax)} (Bund)`,x.fahrS,x.fahrB));
+      if(pe.verpflegung==="voll") L.push(C(`Verpflegung auswärts: ${tage} Tage × 15 = ${n0(tage*15)}, höchstens 3’200`,x.verpf));
+      else if(pe.verpflegung==="verbilligt") L.push(C(`Verpflegung verbilligt (Kantine): ${tage} Tage × 7.50 = ${n0(tage*7.5)}, höchstens 1’600`,x.verpf));
+      else L.push(C("Verpflegung: kein Abzug",0));
+      L.push(C(`Übrige Berufsauslagen: 3 % × ${n0(x.lohn)} = ${n0(x.lohn*.03)}, mindestens 2’000, höchstens 4’000`,x.uebrige));
+      if(x.nebenP) L.push(C(`Nebenerwerb: 20 % × ${n0(x.neben)} = ${n0(x.neben*.2)}, mindestens 800, höchstens 2’400`,x.nebenP));
+      sum("= Total Berufsauslagen",x.fahrS+x.verpf+x.uebrige+x.nebenP,x.fahrB+x.verpf+x.uebrige+x.nebenP); break; }
     case /^14\.[12]$/.test(z): { const x=P[pIdx]; if(!x) break;
-      L.push(...srcLines(["saeule3a"],x.p));
-      L.push(F(`Maximum ${fmt(x.s3aCap)} (${S.persons[x.p].pk?"mit Pensionskasse":"ohne Pensionskasse: 20 % des Erwerbseinkommens, max. "+fmt(36288)})`));
-      sum("Abzug",x.s3a); break; }
+      L.push(...srcLines(["saeule3a"],x.p)); L.push(H("Berechnung"));
+      L.push(C("Einbezahlt",x.s3aEff));
+      L.push(C(S.persons[x.p].pk?`Maximum mit Pensionskasse`:`Maximum ohne Pensionskasse: 20 % × ${n0(x.erwerb)}, höchstens 36’288`,x.s3aCap));
+      sum("= Abzug: tieferer Wert",x.s3a); break; }
     case z==="15": {
-      L.push(...srcLines(["krankenkasse_praemien","versicherung_uebrige"]));
-      L.push(F(`Höchstbetrag Staat: ${R.verh?"verheiratet "+fmt(Z.vers.verh):"alleinstehend "+fmt(Z.vers.single)}${R.ohneVorsorge?" × 1.5 (ohne 2. Säule und 3a)":""}${R.kids?` + ${R.kids} × ${fmt(Z.vers.kind)} für Kinder`:""} = ${fmt(R.capS)}`));
-      L.push(F(`Höchstbetrag Bund: ${fmt(R.capB - B.vers.kind*R.kids)}${R.kids?` + ${R.kids} × ${fmt(B.vers.kind)} für Kinder`:""} = ${fmt(R.capB)}`));
-      sum("Abzug (tieferer Wert von bezahlt und Höchstbetrag)",Math.min(R.versAkt,R.capS),Math.min(R.versAkt,R.capB)); break; }
-    case z==="16.2": L.push(...srcLines(["weiterbildung"])); L.push(F(`Höchstens ${fmt(Z.weiterb)} (Staat) bzw. ${fmt(B.weiterb)} (Bund) pro Person`)); break;
-    case z==="16.6": L.push(...srcLines(["kinderbetreuung"])); L.push(F(`${R.kidsU14} Kind${R.kidsU14===1?"":"er"} unter 14 × höchstens ${fmt(Z.betreuung)} (Staat) bzw. ${fmt(B.betreuung)} (Bund)`)); break;
-    case z==="17": if(R.np===2){ P.forEach(x=>{ const bs=x.fahrS+x.verpf+x.uebrige+x.nebenP, bb=x.fahrB+x.verpf+x.uebrige+x.nebenP; L.push({l:"Erwerbseinkommen "+TX.personName(S,x.p)+" nach Berufsauslagen, Säule 3a und PK-Einkauf",s:Math.max(0,x.erwerb-bs-x.s3a-x.pkEinkauf),b:Math.max(0,x.erwerb-bb-x.s3a-x.pkEinkauf)}); }); L.push(F(`Massgebend ist das tiefere Erwerbseinkommen: ${fmt(R.raw.lowerS)} (Staat) bzw. ${fmt(R.raw.lowerB)} (Bund). Staat: ${fmt(Z.zweiverd)}, höchstens das tiefere Einkommen (§ 31 Abs. 2 StG). Bund: 50 % davon, mindestens ${fmt(B.zwMin)}, höchstens ${fmt(B.zwMax)} (Art. 33 Abs. 2 DBG).`)); } break;
-    case z==="6": L.push(...srcLines(["eigenmietwert","mietertrag","liegenschaft_unterhalt"])); L.push(F(`Bruttoertrag ${fmt(R.raw.liegBrutto)} abzüglich Unterhalt ${fmt(R.raw.liegUnt)} (Staat) bzw. ${fmt(R.raw.liegUntB)} (Bund)${TX.valueOf(S,"liegenschaft_unterhalt")>0?" (effektive Kosten)":" (Pauschale: Staat 20 %, Bund 10 % bei Gebäuden bis 10 Jahre, sonst 20 %)"}`)); break;
-    case z==="22.1": { L.push(...srcLines(["krankheitskosten"])); const n=R.rows.find(x=>x.z==="21"); if(n) L.push(F(`Selbstbehalt 5 % des Nettoeinkommens: ${fmt(Math.max(0,n.s)*.05)} (Staat) bzw. ${fmt(Math.max(0,n.b)*.05)} (Bund). Abzugsfähig ist nur der Teil darüber.`)); break; }
-    case z==="22.2": L.push(...srcLines(["spenden"])); L.push(F("Abzugsfähig ab CHF 100 pro Jahr. Höchstens 20 %: Staat vom Nettoeinkommen Ziffer 21 (§ 32 lit. b StG), Bund vom Nettoeinkommen nach Krankheitskosten (Art. 33a DBG).")); break;
-    case z==="24.1": (S.derived&&S.derived.kids||[]).forEach(k=>L.push({l:k.name+(k.age!=null?` (${k.age} Jahre)`:""),s:null,b:null})); L.push(F(`${R.kids} × ${fmt(Z.kinder)} (Staat) bzw. ${R.kids} × ${fmt(B.kinder)} (Bund)`)); break;
-    case z==="24.3": L.push(F(`Verheiratetenabzug nur bei der direkten Bundessteuer: ${fmt(B.verhAbzug)}`)); break;
-    case z==="7"||z==="19": rowsOf(["1.1","1.2","2.1","3.1","3.2","3.3","3.4","4.1","5.1","5.4","6"]).forEach(x=>L.push({l:"Ziffer "+x.z+" · "+x.l,s:x.s,b:x.b})); sum("Total der Einkünfte",R.ein,R.einB); break;
-    case z==="18"||z==="20": rowsOf(["11.1","11.2","12","13.1","14.1","14.2","15","16.1","16.2","16.6","17"]).forEach(x=>L.push({l:"Ziffer "+x.z+" · "+x.l,s:x.s,b:x.b})); break;
-    case z==="21": { const e=R.rows.find(x=>x.z==="19"), a=R.rows.find(x=>x.z==="20"); L.push({l:"Ziffer 19 · Total der Einkünfte",s:e.s,b:e.b},{l:"minus Ziffer 20 · Total der Abzüge",s:-a.s,b:-a.b}); break; }
-    case z==="23": { const n=R.rows.find(x=>x.z==="21"); L.push({l:"Ziffer 21 · Nettoeinkommen",s:n.s,b:n.b}); rowsOf(["22.1","22.2"]).forEach(x=>L.push({l:"minus Ziffer "+x.z+" · "+x.l,s:-x.s,b:-x.b})); break; }
-    case z==="25"||z==="27": { const r23=R.rows.find(x=>x.z==="23"); L.push({l:"Ziffer 23 · Reineinkommen",s:r23.s,b:r23.b}); rowsOf(["24.1","24.3"]).forEach(x=>L.push({l:"minus Ziffer "+x.z+" · "+x.l,s:-x.s,b:-x.b})); L.push(F("Für die Tarifberechnung auf 100 Franken abgerundet: "+fmt(R.stE)+" (Staat) bzw. "+fmt(R.stB)+" (Bund)")); break; }
+      L.push(...srcLines(["krankenkasse_praemien","versicherung_uebrige"])); L.push(H("Berechnung"));
+      L.push(C("Bezahlte Prämien",R.versAkt));
+      L.push(C(`Höchstbetrag Staat: ${R.verh?"verheiratet "+n0(Z.vers.verh):"alleinstehend "+n0(Z.vers.single)}${R.ohneVorsorge?" × 1.5 (ohne 2. Säule und 3a)":""}${R.kids?` + ${R.kids} × ${n0(Z.vers.kind)}`:""}`,R.capS,null));
+      L.push(C(`Höchstbetrag Bund: ${n0(R.capB - B.vers.kind*R.kids)}${R.kids?` + ${R.kids} × ${n0(B.vers.kind)}`:""}`,null,R.capB));
+      sum("= Abzug: tieferer Wert von bezahlt und Höchstbetrag",Math.min(R.versAkt,R.capS),Math.min(R.versAkt,R.capB)); break; }
+    case z==="16.2": L.push(...srcLines(["weiterbildung"])); L.push(H("Berechnung")); L.push(F(`Höchstens ${n0(Z.weiterb)} (Staat) bzw. ${n0(B.weiterb)} (Bund) pro Person`)); sum("= Abzug",r.s,r.b); break;
+    case z==="16.6": L.push(...srcLines(["kinderbetreuung"])); L.push(H("Berechnung")); L.push(C(`Bezahlt`,tot("kinderbetreuung"))); L.push(C(`Höchstens ${R.kidsU14} Kind${R.kidsU14===1?"":"er"} unter 14 × ${n0(Z.betreuung)} (Staat) bzw. × ${n0(B.betreuung)} (Bund)`,R.kidsU14*Z.betreuung,R.kidsU14*B.betreuung)); sum("= Abzug: tieferer Wert",r.s,r.b); break;
+    case z==="17": if(R.np===2){ L.push(H("Berechnung")); P.forEach(x=>{ const bs=x.fahrS+x.verpf+x.uebrige+x.nebenP, bb=x.fahrB+x.verpf+x.uebrige+x.nebenP; L.push(C(`Erwerbseinkommen ${TX.personName(S,x.p)}: ${n0(x.erwerb)} − Berufsauslagen − Säule 3a ${n0(x.s3a)} − PK-Einkauf ${n0(x.pkEinkauf)}`,Math.max(0,x.erwerb-bs-x.s3a-x.pkEinkauf),Math.max(0,x.erwerb-bb-x.s3a-x.pkEinkauf))); });
+      L.push(C("Tieferes Erwerbseinkommen",R.raw.lowerS,R.raw.lowerB));
+      L.push(F(`Staat: ${n0(Z.zweiverd)}, höchstens das tiefere Einkommen (§ 31 Abs. 2 StG). Bund: 50 % davon, mindestens ${n0(B.zwMin)}, höchstens ${n0(B.zwMax)} (Art. 33 Abs. 2 DBG).`)); sum("= Abzug",r.s,r.b); } break;
+    case z==="6": { L.push(...srcLines(["eigenmietwert","mietertrag","liegenschaft_unterhalt"])); L.push(H("Berechnung"));
+      const em=tot("eigenmietwert"), mt=tot("mietertrag"), eff=tot("liegenschaft_unterhalt")>0;
+      L.push(C(`Bruttoertrag: Eigenmietwert ${n0(em)} + Mietertrag ${n0(mt)}`,R.raw.liegBrutto));
+      L.push(C(eff?"minus Unterhalt effektiv gemäss Belegen":`minus Unterhalt pauschal: 20 % × ${n0(R.raw.liegBrutto)} (Staat) bzw. ${S.overrides&&S.overrides.liegJung?"10 %":"20 %"} (Bund)`,-R.raw.liegUnt,-R.raw.liegUntB));
+      sum("= Nettoertrag",R.raw.liegBrutto-R.raw.liegUnt,R.raw.liegBrutto-R.raw.liegUntB); break; }
+    case z==="22.1": { L.push(...srcLines(["krankheitskosten"])); L.push(H("Berechnung")); const n=row("21"), kk=tot("krankheitskosten");
+      L.push(C("Selbst bezahlte Kosten",kk)); L.push(C(`minus Selbstbehalt 5 % × Nettoeinkommen ${n0(Math.max(0,n.s))} (Staat) bzw. ${n0(Math.max(0,n.b))} (Bund)`,-Math.max(0,n.s)*.05,-Math.max(0,n.b)*.05)); sum("= Abzug (nicht unter 0)",r.s,r.b); break; }
+    case z==="22.2": { L.push(...srcLines(["spenden"])); L.push(H("Berechnung")); const n=row("21"), k1=row("22.1"), sp=tot("spenden");
+      L.push(C("Spenden",sp)); L.push(C(`Höchstens 20 % × ${n0(Math.max(0,n.s))} (Staat) bzw. 20 % × ${n0(Math.max(0,n.b-(k1.b||0)))} (Bund)`,Math.max(0,n.s)*.2,Math.max(0,n.b-(k1.b||0))*.2));
+      L.push(F("Abzugsfähig erst ab CHF 100 pro Jahr (§ 32 lit. b StG, Art. 33a DBG).")); sum("= Abzug: tieferer Wert",r.s,r.b); break; }
+    case z==="24.1": L.push(H("Kinder")); (S.derived&&S.derived.kids||[]).forEach(k=>L.push({l:k.name+(k.age!=null?` (${k.age} Jahre)`:""),sub:true})); L.push(H("Berechnung")); sum(`= ${R.kids} × ${n0(Z.kinder)} (Staat) bzw. ${R.kids} × ${n0(B.kinder)} (Bund)`,Z.kinder*R.kids,B.kinder*R.kids); break;
+    case z==="24.3": L.push(H("Berechnung")); sum(`= Verheiratetenabzug, nur Bundessteuer`,0,B.verhAbzug); break;
+    case z==="7"||z==="19": L.push(H("Berechnung")); rowsOf(["1.1","1.2","2.1","3.1","3.2","3.3","3.4","4.1","5.1","5.4","6"]).forEach(x=>L.push(C("+ Ziffer "+x.z+" · "+x.l,x.s,x.b))); sum("= Total der Einkünfte",R.ein,R.einB); break;
+    case z==="18"||z==="20": L.push(H("Berechnung")); rowsOf(["11.1","11.2","12","13.1","14.1","14.2","15","16.1","16.2","16.6","17"]).forEach(x=>L.push(C("+ Ziffer "+x.z+" · "+x.l,x.s,x.b))); sum("= Total der Abzüge",row("18").s,row("18").b); break;
+    case z==="21": { const e=row("19"), a=row("20"); L.push(H("Berechnung"),C("Ziffer 19 · Total der Einkünfte",e.s,e.b),C("minus Ziffer 20 · Total der Abzüge",-a.s,-a.b)); sum("= Nettoeinkommen",r.s,r.b); break; }
+    case z==="23": { const n=row("21"); L.push(H("Berechnung"),C("Ziffer 21 · Nettoeinkommen",n.s,n.b)); rowsOf(["22.1","22.2"]).forEach(x=>L.push(C("minus Ziffer "+x.z+" · "+x.l,-x.s,-x.b))); sum("= Reineinkommen",r.s,r.b); break; }
+    case z==="25"||z==="27": { const r23=row("23"); L.push(H("Berechnung"),C("Ziffer 23 · Reineinkommen",r23.s,r23.b)); rowsOf(["24.1","24.3"]).forEach(x=>L.push(C("minus Ziffer "+x.z+" · "+x.l,-x.s,-x.b))); L.push(F("Für den Tarif auf 100 Franken abgerundet")); sum("= Steuerbares Einkommen",R.stE,R.stB); break; }
     case /^3[0-5]|^31/.test(z): {
       const map={"30.1":["bankguthaben","wertschriften_wert"],"30.2":["bargeld"],"30.3":["lebensversicherung"],"30.4":["fahrzeuge"],"30.6":["uebriges_vermoegen"],"31.1":["liegenschaft_steuerwert"],"34":["schulden"]};
-      if(map[z]) L.push(...srcLines(map[z]).map(x=>Object.assign(x,{b:null})));
-      if(z==="33") rowsOf(["30.1","30.2","30.3","30.4","30.6","31.1"]).forEach(x=>L.push({l:"Ziffer "+x.z+" · "+x.l,s:x.s,b:null}));
-      if(z==="35"||z==="37") L.push(F(`Ziffer 33 ${fmt(R.raw.v33)} minus Ziffer 34 Schulden ${fmt(R.raw.v34)}; für den Tarif auf 1000 Franken abgerundet: ${fmt(R.verm)}`));
+      if(map[z]) L.push(...srcLines(map[z],undefined,{staat:true}));
+      if(z==="33"){ L.push(H("Berechnung")); rowsOf(["30.1","30.2","30.3","30.4","30.6","31.1"]).forEach(x=>L.push(C("+ Ziffer "+x.z+" · "+x.l,x.s,null))); sum("= Total der Vermögenswerte",r.s,null); }
+      if(z==="35"||z==="37"){ L.push(H("Berechnung"),C("Ziffer 33 · Total der Vermögenswerte",R.raw.v33,null),C("minus Ziffer 34 · Schulden",-R.raw.v34,null)); L.push(F("Für den Tarif auf 1’000 Franken abgerundet")); sum("= Steuerbares Vermögen",R.verm,null); }
       break; }
     default: { const keys=KEYZ(z); if(keys.length) L.push(...srcLines(keys, r.p)); }
   }
@@ -404,14 +461,22 @@ function detailsFor(r){
 function detailTable(L){
   const tb=el("tbody");
   for(const x of L){
+    if(x.h){ tb.append(el("tr",{class:"h"}, el("td",{colspan:"4",text:x.h}))); continue; }
     if(x.f){ tb.append(el("tr",{class:"f"}, el("td",{colspan:"4",text:x.f}))); continue; }
-    tb.append(el("tr",{class:x.sum?"dsum":null},
+    const view = x.doc && x.doc.path ? el("button",{class:"vlink",type:"button",text:"Beleg ansehen",onclick:()=>viewDoc(x.doc)}) : null;
+    tb.append(el("tr",{class:[x.sum?"dsum":"", x.sub?"dsub":"", x.calc?"dcalc":"", x.muted?"dmut":""].filter(Boolean).join(" ")||null},
       el("td",{}, x.l, x.low?el("span",{class:"flag low",text:"unsicher"}):null, x.ed?el("span",{class:"flag ed",text:"korrigiert"}):null),
-      el("td",{class:"src",text:x.src||""}),
+      el("td",{class:"src"}, x.src||"", view),
       el("td",{class:"r amt",text:x.s==null?"":fmt(x.s)}),
       el("td",{class:"r amt",text:x.b==null?"":fmt(x.b)})));
   }
-  return el("table",{class:"dtab"}, tb);
+  return el("table",{class:"dtab"}, el("thead",{}, el("tr",{}, el("th",{text:""}), el("th",{text:"Beleg"}), el("th",{class:"r",text:"Staat"}), el("th",{class:"r",text:"Bund"}))), tb);
+}
+
+async function viewDoc(d){
+  const w=window.open("","_blank");
+  try{ const { data, error }=await SP.client.storage.from("belege").createSignedUrl(d.path,120); if(error||!data) throw 0; if(w) w.location=data.signedUrl; else location.href=data.signedUrl; }
+  catch(_){ if(w) w.close(); toast("Datei konnte nicht geöffnet werden"); }
 }
 
 /* ---------- Personalien (Seite 1) ---------- */
