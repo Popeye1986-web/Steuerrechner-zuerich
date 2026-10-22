@@ -21,7 +21,7 @@ const LABELS = {
   versicherung_uebrige: "Übrige bezahlte Versicherungsprämien (Lebens-, Unfallversicherung)",
   krankheitskosten: "Selbst bezahlte Krankheitskosten (Franchise, Selbstbehalt, nicht gedeckte Rechnungen)",
   saeule3a: "Im Jahr einbezahlter Betrag Säule 3a (nicht das Guthaben)",
-  oev_abo: "Kosten des ÖV-Abonnements",
+  oev_abo: "Effektive ÖV-Kosten für den Arbeitsweg: Abonnement (GA, Verbundabo, Halbtax plus Billette) oder ÖV-Kosten aus einer eigenen Berufskosten-Aufstellung bzw. dem Hilfsblatt Berufsauslagen",
   pk_einkauf: "Freiwilliger Einkauf in die Pensionskasse im Jahr",
   kinderbetreuung: "Bezahlte Kosten für Kita, Hort, Tagesfamilie",
   eigenmietwert: "Eigenmietwert",

@@ -114,6 +114,9 @@ const lohn = (F) => ({ dokumenttyp: "lohnausweis", jahr: 2025, inhaber: { vornam
 { const { R } = mitBelegen([lohn(false), { dokumenttyp: "oev", jahr: 2025, inhaber: { vorname: "Anna", nachname: "Meier" }, personen: [], positionen: [{ key: "oev_abo", betrag: 2100 }] }]);
   check("ÖV-Quittung → effektive Abokosten", R.P[0].fahrS, 2100); }
 
+{ const { R } = mitBelegen([lohn(false), { dokumenttyp: "sonstiges", jahr: 2025, inhaber: { vorname: "Anna", nachname: "Meier" }, personen: [], positionen: [{ key: "oev_abo", betrag: 1450 }] }]);
+  check("ÖV-Kosten aus eigener Berufskosten-Aufstellung → effektiv statt Pauschale", R.P[0].fahrS, 1450); }
+
 /* 5. Doppelte Belege: Einzelrechnung, die schon in der Aufstellung der Liegenschaft steht (Fall: Sanitärrechnung 4'200) */
 const unt = S => S.items.filter(i => i.key === "liegenschaft_unterhalt").reduce((a, i) => a + i.amount, 0);
 const liste = (zeilen) => ({ dokumenttyp: "liegenschaft", jahr: 2025, inhaber: { vorname: "David", nachname: "Test" }, personen: [],

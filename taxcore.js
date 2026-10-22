@@ -573,7 +573,9 @@ window.TX = (function () {
     const lohnInfo = idx => { const d = docs.find(d => d.type === "lohnausweis" && d._owner && adults.indexOf(d._owner) === idx); return d ? (d.result.lohnausweis || {}) : null; };
     for (let i = 0; i < 2; i++) {
       const h = adults[i], o = O.persons[i] || {}, la = lohnInfo(i);
-      const hasAbo = S.docs.some(d => d.type === "oev" && ownerIdx(d) === i);
+      // Effektive ÖV-Kosten aus irgendeinem Beleg dieser Person (ÖV-Quittung, eigene Berufskosten-Aufstellung, Hilfsblatt) gehen der Pauschale vor
+      const oevOf = d => { const e = d.edits && d.edits.oev_abo != null ? +d.edits.oev_abo : ((d.result && d.result.positionen) || []).filter(p => p.key === "oev_abo").reduce((a, p) => a + (+p.betrag || 0), 0); return e > 0; };
+      const hasAbo = S.docs.some(d => ownerIdx(d) === i && (d.type === "oev" || oevOf(d)));
       S.persons[i] = {
         name: h ? [h.vorname, h.nachname].filter(Boolean).join(" ") || "Person " + (i + 1) : "Person " + (i + 1),
         dob: h ? h.dob : "",
