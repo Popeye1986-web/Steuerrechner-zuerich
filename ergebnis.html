@@ -722,7 +722,9 @@ $("print").addEventListener("click",()=>window.print());
   $("navUpload").href=$("emptyLink").href="upload.html?fall="+row.id; $("navResult").href="ergebnis.html?fall="+row.id;
   const sel=el("select",{id:"statusSel","aria-label":"Status des Falls"}); for(const [k,v] of Object.entries(TX.STATUS)) sel.append(el("option",{value:k,text:v.t}));
   sel.value=row.status;
-  sel.addEventListener("change",async()=>{ try{ await TX.setCaseStatus(sel.value); toast("Status: "+TX.STATUS[sel.value].t); }catch(_){ toast("Status konnte nicht gespeichert werden"); sel.value=row.status; } });
+  sel.addEventListener("change",async()=>{ try{ await TX.setCaseStatus(sel.value); toast("Status: "+TX.STATUS[sel.value].t); if(sel.value==="abgeschlossen") await lernen(); }catch(_){ toast("Status konnte nicht gespeichert werden"); sel.value=row.status; } });
+  // Bei jedem abgeschlossenen oder versendeten Fall lernt taxflix: Belegtypen und Ziffern gelten als bestätigt
+  async function lernen(){ const n=await TX.learnFromCase(S); if(n){ TX.saveCase(S,()=>{}); setTimeout(()=>toast(`taxflix hat aus diesem Fall ${n} Zuordnung${n>1?"en":""} gelernt`),1600); } }
   // Ausgefülltes Formular als PDF an den Kunden senden (nach der Prüfung)
   const sentTxt=()=>row.mail_gesendet_am ? "Zuletzt gesendet "+new Date(row.mail_gesendet_am).toLocaleString("de-CH",{dateStyle:"short",timeStyle:"short"}) : "Noch nicht gesendet";
   const sentInfo=el("span",{class:"muted",style:"font-size:13px",text:sentTxt()});
@@ -732,7 +734,7 @@ $("print").addEventListener("click",()=>window.print());
   send.addEventListener("click",async()=>{
     if(!armed){ armed=true; send.textContent="An "+row.kunde_email+" senden?"; setTimeout(()=>{ if(armed){ armed=false; send.textContent="Formular an Kunde senden"; } },5000); return; }
     armed=false; send.disabled=true; send.textContent="Wird gesendet …";
-    try{ await SP.zahlung({action:"senden", fall:row.id, geprueft:true}); row.mail_gesendet_am=new Date().toISOString(); sentInfo.textContent=sentTxt(); toast("Formular an "+row.kunde_email+" gesendet"); }
+    try{ await SP.zahlung({action:"senden", fall:row.id, geprueft:true}); row.mail_gesendet_am=new Date().toISOString(); sentInfo.textContent=sentTxt(); toast("Formular an "+row.kunde_email+" gesendet"); await lernen(); }
     catch(e){ toast(e.message==="mail_not_configured" ? "E-Mail-Versand ist noch nicht eingerichtet (RESEND_API_KEY, MAIL_FROM)" : e.message==="not_configured" ? "Zahlung/Server ist noch nicht eingerichtet" : "Senden fehlgeschlagen"); }
     send.disabled=false; send.textContent="Formular an Kunde senden";
   });

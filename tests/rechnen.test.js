@@ -174,6 +174,16 @@ TX.LEARN.zu = [{ belegtyp: "sonstiges", aussteller: null, stichwort: TX.stichwor
   TX.rebuild(S); const sg = TX.suggestions(S, S.docs[0]);
   truthy("Gleiches Stichwort im Dateinamen → Vorschlag ÖV", sg.length === 1 && sg[0].to === "oev_abo" && sg[0].art === "beleg");
   TX.applySuggestion(S, S.docs[0], sg[0]); TX.rebuild(S); check("Übernommen: ÖV-Kosten", TX.valueOf(S, "oev_abo"), 1450); }
+/* 8. Lernen bei jedem Fall: Abschluss bestätigt die Zuordnungen, Korrekturen zählen mehr */
+{ const { S } = mitBelegen([liste(zeilen), lohn(false)]); S.docs[1].name = "Lohnausweis_Muster_AG.pdf";
+  const L = TX.caseLearnings(S);
+  truthy("Abschluss: Belegtyp aus Dateiname gelernt", L.some(r => r.key === "typ:lohnausweis" && r.stichwort === "lohnausweis muster"));
+  truthy("Abschluss: Einzelposten-Aussteller → Ziffer bestätigt", L.some(r => r.aussteller === "sanitar keller" && r.key === "liegenschaft_unterhalt" && r.quelle === "bestaetigt"));
+  truthy("Allgemeiner Dateiname wird nicht gelernt", TX.stichwort("Scan_0012.pdf") === "" && TX.stichwort("IMG_2231.jpg") === ""); }
+TX.LEARN.zu = [{ aussteller: "maler frei", key: "uebrige_einkuenfte", quelle: "korrektur" }, { aussteller: "maler frei", key: "liegenschaft_unterhalt", quelle: "bestaetigt" }, { aussteller: "maler frei", key: "liegenschaft_unterhalt", quelle: "bestaetigt" }];
+truthy("1 Korrektur (×3) schlägt 2 Bestätigungen", TX.learnedKey("liegenschaft", "Maler Frei GmbH", "").key === "uebrige_einkuenfte");
+TX.LEARN.zu.push(...[1, 2].map(() => ({ aussteller: "maler frei", key: "liegenschaft_unterhalt", quelle: "bestaetigt" })));
+truthy("4 Bestätigungen schlagen 1 Korrektur", TX.learnedKey("liegenschaft", "Maler Frei GmbH", "").key === "liegenschaft_unterhalt");
 TX.LEARN.zu = null;
 
 console.log(`\n${ok} Prüfungen bestanden, ${fail} fehlgeschlagen`);

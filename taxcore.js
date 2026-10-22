@@ -518,17 +518,50 @@ window.TX = (function () {
     if (!(typeof window !== "undefined" && window.SP && SP.client)) return;
     try { const { data, error } = await SP.client.from("lernregeln").select("typ_a,typ_b,merkmale,aussteller,entscheid,aktiv").order("created_at");
       LEARN.rows = error ? [] : (data || []).filter(r => r.aktiv !== false); } catch (_) { LEARN.rows = []; }
-    try { const { data, error } = await SP.client.from("zuordnungen").select("belegtyp,aussteller,stichwort,key,aktiv,created_at").order("created_at");
+    try { const { data, error } = await SP.client.from("zuordnungen").select("belegtyp,aussteller,stichwort,key,quelle,aktiv,created_at").order("created_at");
       LEARN.zu = error ? [] : (data || []).filter(r => r.aktiv !== false); } catch (_) { LEARN.zu = []; }
   }
   /* ---------- Zuordnungen lernen: Prüfer weist einen Betrag einer Ziffer zu oder ändert den Belegtyp ---------- */
   // Stichwort aus Dateiname oder Zeilentext: ohne Endung, Zahlen und Satzzeichen, z.B. «51_Berufskosten_Berechnung.pdf» → «berufskosten berechnung»
-  const stichwort = v => normName(String(v || "").replace(/\.[a-z0-9]{2,4}$/i, "").replace(/[_\-]+/g, " ").replace(/\d+/g, " ")).split(" ").filter(w => w.length > 2).join(" ");
-  async function learnZuordnung(rec) {
-    const r = { belegtyp: rec.belegtyp || null, aussteller: normName(rec.aussteller) || null, stichwort: stichwort(rec.stichwort) || null, key: rec.key };
-    if (!r.key || (!r.aussteller && !r.stichwort)) return;
-    if (LEARN.zu) LEARN.zu.push(Object.assign({ created_at: new Date().toISOString() }, r));
-    try { if (typeof window !== "undefined" && window.SP && SP.client) await SP.client.from("zuordnungen").insert(r); } catch (_) {}
+  // Allgemeine Dateinamen wie «Scan_001.pdf» oder «IMG_2231.jpg» sagen nichts aus und werden nicht gelernt
+  const GENERISCH = new Set(["scan", "scans", "scanned", "dokument", "dokumente", "document", "doc", "beleg", "belege", "img", "image", "foto", "photo", "file", "datei", "pdf", "jpg", "jpeg", "png", "seite", "page", "kopie", "copy", "neu", "new", "whatsapp", "untitled", "unbenannt"]);
+  const stichwort = v => { const w = normName(String(v || "").replace(/\.[a-z0-9]{2,4}$/i, "").replace(/[_\-]+/g, " ").replace(/\d+/g, " ")).split(" ").filter(w => w.length > 2 && !GENERISCH.has(w));
+    return w.some(x => x.length >= 4) ? w.join(" ") : ""; };
+  function zuRec(rec, quelle) {
+    const r = { belegtyp: rec.belegtyp || null, aussteller: normName(rec.aussteller) || null, stichwort: stichwort(rec.stichwort) || null, key: rec.key, quelle: quelle || "korrektur" };
+    return r.key && (r.aussteller || r.stichwort) ? r : null;
+  }
+  async function saveZu(list) {
+    if (!list.length) return;
+    if (LEARN.zu) list.forEach(r => LEARN.zu.push(Object.assign({ created_at: new Date().toISOString() }, r)));
+    try { if (typeof window !== "undefined" && window.SP && SP.client) await SP.client.from("zuordnungen").insert(list); } catch (_) {}
+  }
+  // Korrektur des Prüfers: zählt dreifach
+  async function learnZuordnung(rec) { const r = zuRec(rec, "korrektur"); if (r) await saveZu([r]); }
+  // Abschluss eines Falls: alle Belege, wie sie am Ende zugeordnet sind, gelten als bestätigt (Belegtyp und Ziffern).
+  // Pro Fall nur einmal; wird der Fall später erneut abgeschlossen, kommen nur Belege dazu, die noch nicht gelernt sind.
+  function caseLearnings(S) {
+    const out = [];
+    for (const d of (S.docs || [])) {
+      if (!d.result || d.gelernt || ["steuerrechnung", "steuererklaerung"].includes(d.type) || d.status === "fehler") continue;
+      const r = d.result, aus = r.rechnung && r.rechnung.aussteller;
+      const add = rec => { const x = zuRec(rec, "bestaetigt"); if (x && !out.some(o => o.belegtyp === x.belegtyp && o.aussteller === x.aussteller && o.stichwort === x.stichwort && o.key === x.key)) out.push(x); };
+      add({ aussteller: aus, stichwort: d.name, key: "typ:" + d.type });
+      if (Array.isArray(d.lines)) d.lines.forEach(l => { if (l.key && +l.betrag > 0) add({ belegtyp: d.type, aussteller: l.aussteller, stichwort: l.text, key: l.key }); });
+      else {
+        const keys = new Set([...(r.positionen || []).filter(p => +p.betrag > 0).map(p => p.key), ...Object.entries(d.edits || {}).filter(([, v]) => +v > 0).map(([k]) => k)]);
+        Object.entries(d.edits || {}).forEach(([k, v]) => { if (!(+v > 0)) keys.delete(k); });
+        keys.forEach(k => { if (KEYS[k]) add({ belegtyp: d.type, aussteller: aus, stichwort: d.name, key: k }); });
+        (r.einzelposten || []).forEach(z => { if (z.key && KEYS[z.key] && z.aussteller) add({ belegtyp: d.type, aussteller: z.aussteller, stichwort: null, key: z.key }); });
+      }
+    }
+    return out;
+  }
+  async function learnFromCase(S) {
+    const list = caseLearnings(S);
+    await saveZu(list);
+    (S.docs || []).forEach(d => { if (d.result) d.gelernt = true; });
+    return list.length;
   }
   // Passende gelernte Ziffer: zuerst gleicher Aussteller, sonst gleiches Stichwort (bei gleichem Belegtyp). Letzter Entscheid zählt.
   function learnedKey(belegtyp, aussteller, text, typOnly) {
@@ -537,8 +570,10 @@ window.TX = (function () {
     let hit = a ? rows.filter(r => r.aussteller && r.aussteller === a) : [];
     if (!hit.length && w) hit = rows.filter(r => r.stichwort && r.stichwort === w && (typOnly || !r.belegtyp || r.belegtyp === belegtyp));
     if (!hit.length) return null;
-    const last = hit[hit.length - 1];
-    return { key: last.key, n: hit.filter(r => r.key === last.key).length, via: a && hit[0].aussteller === a ? "Aussteller" : "Stichwort" };
+    // Mehrheit: Korrekturen zählen dreifach, Bestätigungen einfach; bei Gleichstand gilt der neueste Eintrag
+    const score = new Map(); hit.forEach((r, i) => { const w = r.quelle === "bestaetigt" ? 1 : 3; const v = score.get(r.key) || { w: 0, last: 0 }; v.w += w; v.last = i; score.set(r.key, v); });
+    const [key, v] = [...score.entries()].sort((x, y) => y[1].w - x[1].w || y[1].last - x[1].last)[0];
+    return { key, n: hit.filter(r => r.key === key).length, via: a && hit[0].aussteller === a ? "Aussteller" : "Stichwort" };
   }
   // Vorschläge für einen Beleg (nur Vorschläge, nichts wird automatisch geändert)
   function suggestions(S, d) {
@@ -892,5 +927,5 @@ window.TX = (function () {
 
   return { fallNr, fallName, bundTarif, formRows, CASE, STATUS, stateFromRow, loadCase, saveCase, flushCase, setCaseStatus, typeName, rebuild, ZH, BUND, S3A_PK, GEMEINDEN, KEYS, DOCTYPES, emptyState, normalize, loadState, saveState, CLOUD,
     nf, nf2, chf, clamp, married, nPersons, personName, valueOf, setValue, checklist, calc, taxes, uid,
-    findDuplicates, initLines, decideDuplicate, learnZuordnung, learnedKey, suggestions, applySuggestion, stichwort, undoDuplicate, loadLearn, openDuplicates, LEARN, normName };
+    findDuplicates, initLines, decideDuplicate, learnZuordnung, learnFromCase, caseLearnings, learnedKey, suggestions, applySuggestion, stichwort, undoDuplicate, loadLearn, openDuplicates, LEARN, normName };
 })();

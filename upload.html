@@ -783,7 +783,7 @@ function renderCase(){
     const bar=$("caseBar"); bar.hidden=false; bar.replaceChildren();
     const sel=el("select",{id:"statusSel","aria-label":"Status des Falls"}); for(const [k,v] of Object.entries(TX.STATUS)) sel.append(el("option",{value:k,text:v.t}));
     sel.value=st;
-    sel.addEventListener("change",async()=>{ try{ await TX.setCaseStatus(sel.value); toast("Status: "+TX.STATUS[sel.value].t); render(); }catch(_){ toast("Status konnte nicht gespeichert werden"); sel.value=TX.CASE.row.status; } });
+    sel.addEventListener("change",async()=>{ try{ await TX.setCaseStatus(sel.value); toast("Status: "+TX.STATUS[sel.value].t); if(sel.value==="abgeschlossen"){ const n=await TX.learnFromCase(S); if(n){ TX.saveCase(S,onSave); setTimeout(()=>toast(`taxflix hat aus diesem Fall ${n} Zuordnung${n>1?"en":""} gelernt`),1600); } } render(); }catch(_){ toast("Status konnte nicht gespeichert werden"); sel.value=TX.CASE.row.status; } });
     bar.append(el("a",{class:"btn ghost small",href:"faelle.html",text:"← Alle Fälle"}),
       el("div",{class:"who"}, el("b",{text:TX.fallNr(row)+" · "+TX.fallName(row)}), el("span",{class:"muted",text:`${row.kunde_email||"E-Mail folgt bei der Bezahlung"} · Steuerjahr ${row.jahr}`})),
       el("label",{for:"statusSel",class:"label",text:"Status"}), sel);

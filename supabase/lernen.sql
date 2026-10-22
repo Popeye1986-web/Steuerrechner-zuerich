@@ -47,3 +47,6 @@ drop policy if exists "Zuordnungen ändern" on public.zuordnungen;
 create policy "Zuordnungen lesen"   on public.zuordnungen for select using (public.ist_pruefer());
 create policy "Zuordnungen anlegen" on public.zuordnungen for insert with check (public.ist_pruefer());
 create policy "Zuordnungen ändern"  on public.zuordnungen for update using (public.ist_pruefer()) with check (public.ist_pruefer());
+
+-- Herkunft einer Zuordnung: «korrektur» (Prüfer hat geändert, zählt dreifach) oder «bestaetigt» (aus einem abgeschlossenen Fall, zählt einfach)
+alter table public.zuordnungen add column if not exists quelle text not null default 'korrektur';

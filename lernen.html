@@ -44,8 +44,8 @@ table.lt tr.off td{color:var(--muted);text-decoration:line-through}
 
   <section class="block" aria-labelledby="h-z">
     <h2 id="h-z">Zuordnungen zu Ziffern und Belegtypen</h2>
-    <p>Wenn ein Prüfer einen Betrag einer Ziffer zuweist oder den Belegtyp ändert.</p>
-    <div class="card tablebox"><table class="lt"><thead><tr><th>Erkannt an</th><th>Gelernt</th><th class="n">Anzahl</th><th>Zuletzt</th><th></th></tr></thead><tbody id="zRows"></tbody></table></div>
+    <p>Korrekturen der Prüfer (zählen dreifach) und Bestätigungen aus jedem abgeschlossenen oder versendeten Fall (zählen einfach). Bei Widersprüchen gilt die Mehrheit.</p>
+    <div class="card tablebox"><table class="lt"><thead><tr><th>Erkannt an</th><th>Gelernt</th><th class="n">Korrigiert / bestätigt</th><th>Zuletzt</th><th></th></tr></thead><tbody id="zRows"></tbody></table></div>
   </section>
 
   <section class="block" aria-labelledby="h-d">
@@ -82,7 +82,7 @@ function render(){
     .map(g=>({g, wer:(g.first.aussteller?"Aussteller «"+g.first.aussteller+"»":"Stichwort «"+(g.first.stichwort||"")+"»")+(g.first.belegtyp&&!/^typ:/.test(g.first.key)?" · "+TX.typeName(g.first.belegtyp):""), was:zif(g.first.key)}))
     .filter(x=>!q || (x.wer+" "+x.was).toLowerCase().includes(q));
   if(!zg.length) zb.append(el("tr",{}, el("td",{colspan:"5",class:"empty",text:Z.some(r=>r.aktiv!==false)?"Keine Treffer.":"Noch nichts gelernt. Sobald ein Prüfer Beträge Ziffern zuordnet oder Belegtypen ändert, erscheint es hier."})));
-  for(const x of zg.sort((a,b)=>b.g.rows.length-a.g.rows.length)) zb.append(el("tr",{}, el("td",{text:x.wer}), el("td",{text:x.was}), el("td",{class:"n",text:String(x.g.rows.length)}), el("td",{text:day(x.g.rows[x.g.rows.length-1].created_at)}),
+  for(const x of zg.sort((a,b)=>b.g.rows.length-a.g.rows.length)) zb.append(el("tr",{}, el("td",{text:x.wer}), el("td",{text:x.was}), el("td",{class:"n",title:"Korrekturen / Bestätigungen aus abgeschlossenen Fällen",text:`${x.g.rows.filter(r=>r.quelle!=="bestaetigt").length} / ${x.g.rows.filter(r=>r.quelle==="bestaetigt").length}`}), el("td",{text:day(x.g.rows[x.g.rows.length-1].created_at)}),
     el("td",{}, el("button",{class:"btn small ghost",type:"button",text:"Löschen",onclick:()=>off("zuordnungen",x.g.rows.map(r=>r.id))}))));
   const db=$("dRows"); db.replaceChildren();
   const dg=group(D.filter(r=>r.aktiv!==false), r=>[r.typ_a,r.typ_b,r.merkmale,r.aussteller||"",r.entscheid].join("|"))
