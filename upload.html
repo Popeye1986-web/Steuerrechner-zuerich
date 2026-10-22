@@ -214,6 +214,16 @@ body.hascase .drop,body.hascase .needs,body.hascase #yearPick{display:none}
 .dupbox.done{background:var(--sheet-2);border:1px solid var(--line);color:var(--muted)}
 .dupbox.sep{background:var(--ok-soft);border:1px solid #bfe0cd;color:#145a37}
 .dupbox .btns{display:flex;flex-wrap:wrap;gap:8px}
+.lines{display:flex;flex-direction:column;gap:10px}
+.ltab{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.lrow{display:grid;grid-template-columns:minmax(0,1.3fr) 130px minmax(0,1.4fr) auto;gap:8px;align-items:center;padding:8px 10px;border-top:1px solid var(--line-soft)}
+.lrow:first-child{border-top:0}
+.lrow.lhead{background:var(--sheet-2);font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:6px 10px}
+.lrow input,.lrow select{font:inherit;font-size:14.5px;min-height:38px;padding:6px 9px;border:1px solid var(--line);border-radius:7px;background:#fff;width:100%;min-width:0}
+.lrow input[type=number]{text-align:right;font-family:var(--f-num)}
+.lrow.off input,.lrow.off select{color:var(--muted);background:var(--sheet-2)}
+.lsum{font-size:14px}
+@media (max-width:720px){.lrow{grid-template-columns:minmax(0,1fr) 110px}.lrow select{grid-column:1/-1}.lrow.lhead span:nth-child(3),.lrow.lhead span:nth-child(4){display:none}.lrow .btn{grid-column:1/-1;justify-self:end}}
 </style>
 </head>
 <body class="pending">
@@ -470,12 +480,13 @@ const DS={ speichern:["run red","Wird hochgeladen"], wartet:["run red","In Warte
 // Nicht erkannt: Lesefehler, kein Ergebnis, Typ «Anderer Beleg» oder keine Werte (ausser Steuerrechnung/-erklärung)
 function unerkannt(d){
   if(["lesen","wartet","speichern"].includes(d.status)) return false;
-  const edited=d.edits && Object.keys(d.edits).length;
+  const edited=(d.edits && Object.keys(d.edits).length) || (Array.isArray(d.lines) && d.lines.some(l=>l.key&&+l.betrag>0));
   if(d.typeLocked && (edited || ["steuerrechnung","steuererklaerung"].includes(d.type))) return false;
   if(d.status==="fehler" || !d.result) return true;
   const pos=(d.result.positionen||[]).length;
   return !pos && !edited && !["steuerrechnung","steuererklaerung"].includes(d.type);
 }
+const OPENDET=new Set(); // aufgeklappte Belege bleiben nach dem Speichern offen
 function renderDocs(){
   const box=$("docList"); box.replaceChildren();
   if(PRUEFER){
@@ -508,7 +519,8 @@ function renderDocs(){
 
     // Details: Typ, Person, Werte (nur für den Prüfer)
     if(!PRUEFER){ box.append(card); continue; }
-    const det=el("details",{}); if(unk || (!d.result && d.status==="gespeichert" && AUTO.state==="off")) det.open=true;
+    const det=el("details",{}); if(unk || OPENDET.has(d.id) || (!d.result && d.status==="gespeichert" && AUTO.state==="off")) det.open=true;
+    det.addEventListener("toggle",()=>{ if(det.open) OPENDET.add(d.id); else OPENDET.delete(d.id); });
     det.append(el("summary",{text: unk ? "Beleg selbst zuordnen: Typ, Person und Beträge" : d.result ? "Werte ansehen und korrigieren" : "Typ und Werte"}));
     const inner=el("div",{class:"box"});
     const tsel=el("select",{id:"t-"+d.id}); for(const t of DOCTYPES) tsel.append(el("option",{value:t.id,text:t.name}));
@@ -520,6 +532,8 @@ function renderDocs(){
       top.append(el("div",{class:"field"}, el("label",{for:"o-"+d.id,text:"Gehört zu"}), psel));
     }
     inner.append(top);
+    if(Array.isArray(d.lines)) inner.append(linesEditor(d));
+    else {
     const type=DOCTYPES.find(t=>t.id===d.type)||{keys:[]};
     const fromRes=((d.result&&d.result.positionen)||[]).map(p=>p.key);
     const keys=[...new Set([...fromRes, ...type.keys, ...Object.keys(d.edits||{})])].filter(k=>KEYS[k]);
@@ -544,12 +558,42 @@ function renderDocs(){
       asel.addEventListener("change",()=>{ if(!asel.value) return; d.edits=d.edits||{}; d.edits[asel.value]=0; d.typeLocked=true; render(); const f=document.getElementById(`e-${d.id}-${asel.value}`); if(f) f.focus(); });
       inner.append(el("div",{class:"field",style:"max-width:460px"}, el("label",{for:"a-"+d.id,text:"Betrag für eine andere Ziffer erfassen"}), asel));
     }
+    if(!["steuerrechnung","steuererklaerung"].includes(d.type)) inner.append(el("div",{class:"btns",style:"margin-top:4px"}, el("button",{class:"btn small",type:"button",text:"Beträge einzeln Ziffern zuordnen",onclick:()=>{ d.lines=TX.initLines(d); d.typeLocked=true; commit(); const f=document.getElementById("lt-"+d.id+"-0"); if(f) f.focus(); }}), el("span",{class:"note",text:"Für Belege mit mehreren Beträgen für verschiedene Ziffern."})));
+    }
     if(d.type==="steuerrechnung"){ inner.append(el("p",{class:"note",text:"Aus diesem Beleg werden nur Zivilstand, Gemeinde, Konfession und Steuerfüsse übernommen."})); }
     else if(d.type==="steuererklaerung"){ inner.append(el("p",{class:"note",text:"Aus diesem Beleg wird Seite 1 übernommen: Personen, Kinder, Zivilstand, Gemeinde und Konfession. Beträge des Vorjahres werden nicht übernommen."})); }
     det.append(inner); card.append(det);
     box.append(card);
   }
 }
+
+// Einzelne Beträge eines Belegs: jede Zeile mit Bezeichnung, Betrag und Ziffer (oder «nicht zählen»)
+function linesEditor(d){
+  const wrap=el("div",{class:"lines"});
+  const opts=Object.entries(KEYS).sort((a,b)=>String(a[1].z).localeCompare(String(b[1].z),"de",{numeric:true}));
+  const keySel=(l,id)=>{ const sel=el("select",{id,"aria-label":"Ziffer"}); sel.append(el("option",{value:"",text:"— nicht zählen —"}));
+    for(const [k,v] of opts) sel.append(el("option",{value:k,text:(v.z&&v.z!=="WV"?"Ziffer "+v.z+" · ":"Vermögen · ")+v.l}));
+    sel.value=l.key||""; sel.addEventListener("change",()=>{ l.key=sel.value||null; commit(); }); return sel; };
+  const tbl=el("div",{class:"ltab",role:"table","aria-label":"Beträge auf dem Beleg"});
+  tbl.append(el("div",{class:"lrow lhead",role:"row"}, el("span",{text:"Bezeichnung"}), el("span",{text:"Betrag CHF"}), el("span",{text:"Ziffer"}), el("span")));
+  d.lines.forEach((l,i)=>{
+    const t=el("input",{id:`lt-${d.id}-${i}`,type:"text",value:l.text||"",placeholder:"z.B. Sanitärrechnung","aria-label":"Bezeichnung"}); t.addEventListener("change",()=>{ l.text=t.value.trim(); commit(); });
+    const v=el("input",{type:"number",min:"0",step:"0.05",inputmode:"decimal",value:l.betrag?Math.round(l.betrag*100)/100:"",placeholder:"0","aria-label":"Betrag"}); v.addEventListener("change",()=>{ l.betrag=Math.max(0,+v.value||0); commit(); });
+    const del=el("button",{class:"btn ghost small",type:"button",text:"Entfernen","aria-label":"Zeile entfernen: "+(l.text||"")}); del.addEventListener("click",()=>{ d.lines.splice(i,1); commit(); });
+    tbl.append(el("div",{class:"lrow"+(l.key?"":" off"),role:"row"}, t, v, keySel(l,`lk-${d.id}-${i}`), del));
+  });
+  wrap.append(tbl);
+  // Summe pro Ziffer
+  const by={}; d.lines.forEach(l=>{ if(l.key&&+l.betrag>0) by[l.key]=(by[l.key]||0)+(+l.betrag); });
+  const nz=d.lines.filter(l=>!l.key&&+l.betrag>0).reduce((a,l)=>a+(+l.betrag),0);
+  const sumBox=el("div",{class:"lsum"}, el("b",{text:"Übernommen: "}), Object.keys(by).length ? Object.entries(by).map(([k,v])=>`${KEYS[k].z&&KEYS[k].z!=="WV"?"Ziffer "+KEYS[k].z:"Vermögen"} ${KEYS[k].l}: ${TX.chf(v)}`).join(" · ") : "nichts", nz?el("span",{class:"note",text:` · nicht gezählt: ${TX.chf(nz)}`}):null);
+  wrap.append(sumBox);
+  wrap.append(el("div",{class:"btns"},
+    el("button",{class:"btn small",type:"button",text:"+ Betrag hinzufügen",onclick:()=>{ d.lines.push({id:TX.uid(),text:"",betrag:0,key:null}); commit(); const f=document.getElementById(`lt-${d.id}-${d.lines.length-1}`); if(f) f.focus(); }}),
+    el("button",{class:"btn ghost small",type:"button",text:"Zurück zu den ausgelesenen Werten",onclick:()=>{ if(confirmReset(d)){ delete d.lines; commit(); } }})));
+  return wrap;
+}
+function confirmReset(d){ return !(d.lines||[]).some(l=>l.text||l.betrag) || window.confirm("Die einzelnen Zuordnungen dieses Belegs werden verworfen. Fortfahren?"); }
 
 // Möglicherweise doppelt: Entscheid des Prüfers, wird für künftige Fälle gemerkt
 function dupBox(d){

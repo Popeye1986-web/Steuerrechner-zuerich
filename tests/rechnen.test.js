@@ -145,5 +145,17 @@ TX.LEARN.rows = [1, 2, 3].map(() => ({ typ_a: "liegenschaft", typ_b: "liegenscha
   truthy("3 gleiche Entscheide zu Belegtyp und Merkmal → gelernt", S.docs[0].dup && S.docs[0].dup.entscheid === "doppelt" && S.docs[0].dup.quelle === "gelernt"); }
 TX.LEARN.rows = null;
 
+/* 6. Einzelne Beträge eines Belegs verschiedenen Ziffern zuordnen */
+{ const { S } = mitBelegen([liste(zeilen)]);
+  const d = S.docs[0]; d.lines = TX.initLines(d);
+  check("Zeilen aus Aufstellung: Summe Unterhalt unverändert", d.lines.filter(l => l.key === "liegenschaft_unterhalt").reduce((a, l) => a + l.betrag, 0), 9700);
+  truthy("Eigenmietwert als eigene Zeile", d.lines.some(l => l.key === "eigenmietwert" && l.betrag === 24000));
+  d.lines.find(l => l.betrag === 5500).key = "weiterbildung"; d.lines.push({ id: "x", text: "Spende", betrag: 300, key: "spenden" }); d.lines.push({ id: "y", text: "privat", betrag: 999, key: null });
+  TX.rebuild(S);
+  check("Unterhalt nach Umzuordnung", TX.valueOf(S, "liegenschaft_unterhalt"), 4200);
+  check("Betrag bei anderer Ziffer gezählt", TX.valueOf(S, "weiterbildung"), 5500);
+  check("Neue Zeile gezählt", TX.valueOf(S, "spenden"), 300);
+  check("«nicht zählen» wird ignoriert", S.items.reduce((a, i) => a + i.amount, 0), 24000 + 4200 + 5500 + 300); }
+
 console.log(`\n${ok} Prüfungen bestanden, ${fail} fehlgeschlagen`);
 process.exit(fail ? 1 : 0);

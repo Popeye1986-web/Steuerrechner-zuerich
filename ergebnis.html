@@ -362,6 +362,11 @@ function srcLines(keys, p, opt){
     const raw=pos.reduce((a,x)=>a+(+x.betrag||0),0);
     const edited=d.edits&&d.edits[it.key]!=null;
     const src="«"+d.name+"» · "+TX.typeName(d.type)+(d.result&&d.result.rechnung&&d.result.rechnung.aussteller?" · "+d.result.rechnung.aussteller:"")+(d.result&&d.result.rechnung&&d.result.rechnung.datum?" · "+d.result.rechnung.datum:"");
+    if(Array.isArray(d.lines)){
+      out.push({l:lab, src, s:+it.amount, b:o.staat?null:+it.amount, hand:true, doc:d});
+      d.lines.filter(x=>x.key===it.key&&+x.betrag>0).forEach(x=>out.push({l:"· "+(x.text||"ohne Bezeichnung"), s:+x.betrag, b:o.staat?null:+x.betrag, sub:true, muted:true}));
+      continue;
+    }
     out.push({l:lab, src, s:+it.amount, b:o.staat?null:+it.amount, low:pos.some(x=>x.sicherheit==="tief")&&!edited, ed:edited, doc:d});
     if(edited && Math.round(raw)!==Math.round(+d.edits[it.key])) out.push({l:`ausgelesen ${fmt(raw)}, vom Prüfer korrigiert auf ${fmt(+d.edits[it.key])}`, sub:true});
     const dup=d.dup;
@@ -465,7 +470,7 @@ function detailTable(L){
     if(x.f){ tb.append(el("tr",{class:"f"}, el("td",{colspan:"4",text:x.f}))); continue; }
     const view = x.doc && x.doc.path ? el("button",{class:"vlink",type:"button",text:"Beleg ansehen",onclick:()=>viewDoc(x.doc)}) : null;
     tb.append(el("tr",{class:[x.sum?"dsum":"", x.sub?"dsub":"", x.calc?"dcalc":"", x.muted?"dmut":""].filter(Boolean).join(" ")||null},
-      el("td",{}, x.l, x.low?el("span",{class:"flag low",text:"unsicher"}):null, x.ed?el("span",{class:"flag ed",text:"korrigiert"}):null),
+      el("td",{}, x.l, x.low?el("span",{class:"flag low",text:"unsicher"}):null, x.ed?el("span",{class:"flag ed",text:"korrigiert"}):null, x.hand?el("span",{class:"flag ed",text:"einzeln zugeordnet"}):null),
       el("td",{class:"src"}, x.src||"", view),
       el("td",{class:"r amt",text:x.s==null?"":fmt(x.s)}),
       el("td",{class:"r amt",text:x.b==null?"":fmt(x.b)})));

@@ -520,6 +520,25 @@ window.TX = (function () {
   }
   const openDuplicates = S => (S.docs || []).filter(d => d.dup && !d.dup.entscheid);
 
+  // Beträge eines Belegs als einzelne Zeilen: Einzelposten der Aufstellung, sonst die ausgelesenen Positionen (Korrekturen eingerechnet).
+  // Die Summe pro Ziffer bleibt beim Umschalten gleich; Einzelposten ohne passende Position starten mit «nicht zählen».
+  function initLines(d) {
+    const r = d.result || {}, by = {};
+    for (const p of (r.positionen || [])) if (KEYS[p.key]) by[p.key] = (by[p.key] || 0) + (+p.betrag || 0);
+    for (const [k, v] of Object.entries(d.edits || {})) if (KEYS[k]) by[k] = +v || 0;
+    const ez = (r.einzelposten || []).filter(z => +z.betrag > 0), used = new Set(), lines = [];
+    const txt = z => [z.aussteller, z.datum, z.nummer].filter(Boolean).join(" · ") || "Position";
+    for (const [k, v] of Object.entries(by)) {
+      const zs = ez.filter(z => z.key === k), zsum = zs.reduce((a, z) => a + (+z.betrag), 0);
+      if (zs.length && zsum <= v + 1) {
+        zs.forEach(z => { used.add(z); lines.push({ id: uid(), text: txt(z), betrag: +z.betrag, key: k }); });
+        if (v - zsum > 1) lines.push({ id: uid(), text: "Übriger Betrag " + KEYS[k].l, betrag: Math.round((v - zsum) * 100) / 100, key: k });
+      } else if (v) lines.push({ id: uid(), text: KEYS[k].l, betrag: v, key: k });
+    }
+    ez.filter(z => !used.has(z)).forEach(z => lines.push({ id: uid(), text: txt(z), betrag: +z.betrag, key: null }));
+    return lines;
+  }
+
   function rebuild(S) {
     const O = S.overrides = S.overrides || {};
     O.persons = O.persons || [{}, {}];
@@ -655,10 +674,15 @@ window.TX = (function () {
     S.items = [];
     for (const d of S.docs) {
       const vals = {};
+      if (Array.isArray(d.lines)) {
+        // Vom Prüfer einzeln zugeordnete Beträge: jede Zeile zählt bei ihrer Ziffer, «nicht zählen» (ohne Schlüssel) wird ignoriert
+        for (const l of d.lines) if (KEYS[l.key] && +l.betrag > 0) vals[l.key] = (vals[l.key] || 0) + (+l.betrag);
+      } else {
       for (const p of ((d.result && d.result.positionen) || [])) { if (KEYS[p.key]) vals[p.key] = (vals[p.key] || 0) + (+p.betrag || 0); }
       for (const [k, v] of Object.entries(d.edits || {})) { if (KEYS[k]) vals[k] = +v || 0; }
+      }
       // Doppelt erkannt (oder noch offen): Betrag nur einmal zählen, bis der Prüfer «separat» entscheidet
-      if (d.dup && d.dup.entscheid !== "separat" && vals[d.dup.key] != null && !(d.edits && d.edits[d.dup.key] != null)) vals[d.dup.key] = Math.max(0, vals[d.dup.key] - d.dup.betrag);
+      if (d.dup && d.dup.entscheid !== "separat" && vals[d.dup.key] != null && !Array.isArray(d.lines) && !(d.edits && d.edits[d.dup.key] != null)) vals[d.dup.key] = Math.max(0, vals[d.dup.key] - d.dup.betrag);
       const i = ownerIdx(d);
       for (const [k, v] of Object.entries(vals)) if (v) S.items.push({ id: d.id + "-" + k, key: k, person: KEYS[k].p ? i : "g", amount: v, source: "dok", docId: d.id });
       d.owner = i;
@@ -819,5 +843,5 @@ window.TX = (function () {
 
   return { fallNr, fallName, bundTarif, formRows, CASE, STATUS, stateFromRow, loadCase, saveCase, flushCase, setCaseStatus, typeName, rebuild, ZH, BUND, S3A_PK, GEMEINDEN, KEYS, DOCTYPES, emptyState, normalize, loadState, saveState, CLOUD,
     nf, nf2, chf, clamp, married, nPersons, personName, valueOf, setValue, checklist, calc, taxes, uid,
-    findDuplicates, decideDuplicate, undoDuplicate, loadLearn, openDuplicates, LEARN, normName };
+    findDuplicates, initLines, decideDuplicate, undoDuplicate, loadLearn, openDuplicates, LEARN, normName };
 })();
